@@ -317,4 +317,55 @@ public class OnboardingController : ControllerBase
         var urls = keys.Select(k => $"/api/admin/stream-proxy?key={Uri.EscapeDataString(k)}").ToArray();
         return Ok(new { count = urls.Length, urls });
     }
+
+    // Forgot password endpoint: accepts email and a new password (in production, you'd send a reset link/token via email)
+    // For now, this is a simple reset that requires the email to exist.
+    public record ForgotPasswordRequest(string Email, string NewPassword);
+
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public IActionResult ForgotPassword([FromBody] ForgotPasswordRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.NewPassword))
+            return BadRequest(new { error = "Email and NewPassword are required" });
+
+        var user = _usersRepo.GetByEmail(req.Email);
+        if (user == null)
+            return NotFound(new { error = "User not found" });
+
+        // Hash the new password and update
+        var newHash = HashPassword(req.NewPassword);
+        _usersRepo.UpdatePasswordHashByEmail(req.Email, newHash);
+
+        return Ok(new { success = true, message = "Password updated successfully. You can now log in with your new password." });
+    }
+
+    // Change password endpoint: requires authentication and current password verification
+    public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public IActionResult ChangePassword([FromBody] ChangePasswordRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.CurrentPassword) || string.IsNullOrWhiteSpace(req.NewPassword))
+            return BadRequest(new { error = "CurrentPassword and NewPassword are required" });
+
+        var user = GetUserFromToken(out var uid, out _);
+        if (user == null)
+            return Unauthorized(new { error = "Invalid or missing token" });
+
+        var fresh = _usersRepo.GetById(uid);
+        if (fresh == null)
+            return NotFound(new { error = "User not found" });
+
+        // Verify current password
+        if (!VerifyPassword(req.CurrentPassword, fresh.PasswordHash))
+            return Unauthorized(new { error = "Current password is incorrect" });
+
+        // Hash and update new password
+        var newHash = HashPassword(req.NewPassword);
+        _usersRepo.UpdatePasswordHash(uid, newHash);
+
+        return Ok(new { success = true, message = "Password changed successfully" });
+    }
 }

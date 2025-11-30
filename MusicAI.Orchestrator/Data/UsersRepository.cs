@@ -107,6 +107,20 @@ namespace MusicAI.Orchestrator.Data
             db.Execute("UPDATE users SET country = @Country WHERE id = @Id", new { Country = country, Id = id });
         }
 
+        public void UpdatePasswordHash(string id, string passwordHash)
+        {
+            using var db = Connection();
+            db.Open();
+            db.Execute("UPDATE users SET password_hash = @PasswordHash WHERE id = @Id", new { PasswordHash = passwordHash, Id = id });
+        }
+
+        public void UpdatePasswordHashByEmail(string email, string passwordHash)
+        {
+            using var db = Connection();
+            db.Open();
+            db.Execute("UPDATE users SET password_hash = @PasswordHash WHERE LOWER(email) = LOWER(@Email)", new { PasswordHash = passwordHash, Email = email });
+        }
+
         public void Dispose() { }
     }
 }
