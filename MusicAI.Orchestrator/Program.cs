@@ -70,7 +70,7 @@ builder.Services.AddEndpointsApiExplorer();
 // Configure CORS: read allowed origins from config or env, default to localhost:3000 and your domain
 var allowedOriginsRaw = builder.Configuration["Cors:AllowedOrigins"]
                        ?? Environment.GetEnvironmentVariable("Cors__AllowedOrigins")
-                       ?? "http://localhost:3000,https://tingoradio.ai";
+                       ?? "http://localhost:3000,https://tingoradio.ai,https://tingoradiomusiclibrary.tingoai.ai";
 var allowedOrigins = allowedOriginsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries)
     .Select(s => s.Trim())
     .Where(s => !string.IsNullOrEmpty(s))
