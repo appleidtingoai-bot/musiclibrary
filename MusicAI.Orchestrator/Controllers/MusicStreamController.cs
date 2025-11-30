@@ -37,6 +37,14 @@ namespace MusicAI.Orchestrator.Controllers
 
             _logger.LogInformation("HLS playlist requested for key: {Key}", key);
 
+            // Enforce Origin whitelist for HLS requests to prevent direct downloads
+            var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
+            if (string.IsNullOrEmpty(origin) || !(origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+            {
+                _logger.LogWarning("Blocked HLS request without allowed Origin: {Origin}", origin);
+                return StatusCode(403, new { error = "Origin not allowed" });
+            }
+
             // Generate HLS master playlist pointing to public stream proxy
             var baseUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{Uri.EscapeDataString(key)}";
 
@@ -52,7 +60,10 @@ namespace MusicAI.Orchestrator.Controllers
 
 #EXT-X-ENDLIST";
 
-            return Content(m3u8Content, "application/vnd.apple.mpegurl");
+            var result = Content(m3u8Content, "application/vnd.apple.mpegurl");
+            // Encourage browsers to play inline (not download)
+            Response.Headers["Content-Disposition"] = "inline";
+            return result;
         }
 
         /// <summary>
@@ -69,6 +80,14 @@ namespace MusicAI.Orchestrator.Controllers
             }
 
             _logger.LogInformation("Stream requested for key: {Key}", key);
+
+            // Require an Origin header from allowed origins to reduce direct download abuse
+            var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
+            if (string.IsNullOrEmpty(origin) || !(origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+            {
+                _logger.LogWarning("Blocked stream request without allowed Origin: {Origin}", origin);
+                return StatusCode(403, new { error = "Origin not allowed" });
+            }
 
             if (_s3Service == null)
             {
@@ -118,7 +137,6 @@ namespace MusicAI.Orchestrator.Controllers
                 }
 
                 // Enable CORS for browser playback: echo Origin only when it's an allowed origin
-                var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
                 if (!string.IsNullOrEmpty(origin) && (origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
                 {
                     Response.Headers["Access-Control-Allow-Origin"] = origin;
