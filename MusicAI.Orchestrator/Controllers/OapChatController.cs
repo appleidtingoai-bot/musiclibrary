@@ -89,8 +89,8 @@ namespace MusicAI.Orchestrator.Controllers
                 Title = track.Title,
                 Artist = track.Artist,
                 S3Key = track.S3Key,
-                HlsUrl = $"http://localhost:5000/api/music/hls/{track.S3Key}",
-                StreamUrl = $"http://localhost:5000/api/music/stream/{track.S3Key}",
+                HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}",
+                StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}",
                 Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
                 Genre = track.Genre
             }).ToList();
@@ -126,8 +126,8 @@ namespace MusicAI.Orchestrator.Controllers
                 Title = track.Title,
                 Artist = track.Artist,
                 S3Key = track.S3Key,
-                HlsUrl = $"http://localhost:5000/api/music/hls/{track.S3Key}",
-                StreamUrl = $"http://localhost:5000/api/music/stream/{track.S3Key}",
+                HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}",
+                StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}",
                 Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
                 Genre = track.Genre
             }).ToList();

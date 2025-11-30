@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 using MusicAI.Common.Models;
 using MusicAI.Infrastructure.Services;
 using System.IO;
@@ -383,6 +384,17 @@ builder.Services.AddSingleton<List<MusicAI.Common.Models.PersonaConfig>>(sp => n
 });
 
 var app = builder.Build();
+
+// Respect reverse proxy headers (X-Forwarded-For, X-Forwarded-Proto) so generated
+// Request.Scheme and Request.Host reflect the original client request (nginx reverse proxy).
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+// If running behind a proxy without known networks, clear known lists so forwarded headers are accepted.
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedOptions);
 
 // Development: ensure the app listens on both http and https for local testing
 if (app.Environment.IsDevelopment())
