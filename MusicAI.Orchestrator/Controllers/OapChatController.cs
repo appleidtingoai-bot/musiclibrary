@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MusicAI.Common.Models;
@@ -21,6 +22,7 @@ namespace MusicAI.Orchestrator.Controllers
         private readonly IS3Service _s3Service;
         private readonly ILogger<OapChatController> _logger;
         private readonly UsersRepository _usersRepo;
+        private readonly IStreamTokenService _tokenService;
 
         public OapChatController(
             List<PersonaConfig> personas,
@@ -28,7 +30,8 @@ namespace MusicAI.Orchestrator.Controllers
             MusicRepository? musicRepo,
             IS3Service s3Service,
             ILogger<OapChatController> logger,
-            UsersRepository usersRepo)
+            UsersRepository usersRepo,
+            IStreamTokenService tokenService)
         {
             _personas = personas;
             _newsService = newsService;
@@ -36,6 +39,7 @@ namespace MusicAI.Orchestrator.Controllers
             _s3Service = s3Service;
             _logger = logger;
             _usersRepo = usersRepo;
+            _tokenService = tokenService;
         }
 
         /// <summary>
@@ -83,16 +87,21 @@ namespace MusicAI.Orchestrator.Controllers
             var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, request.UserId);
 
             // Convert to HLS streaming URLs (public endpoints, no auth required)
-            var playlistWithUrls = playlist.Select(track => new MusicTrackDto
+            var playlistWithUrls = playlist.Select(track =>
             {
-                Id = track.Id,
-                Title = track.Title,
-                Artist = track.Artist,
-                S3Key = track.S3Key,
-                HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}",
-                StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}",
-                Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
-                Genre = track.Genre
+                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromMinutes(2)) ?? string.Empty;
+                var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                return new MusicTrackDto
+                {
+                    Id = track.Id,
+                    Title = track.Title,
+                    Artist = track.Artist,
+                    S3Key = track.S3Key,
+                    HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}{encoded}",
+                    StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}",
+                    Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
+                    Genre = track.Genre
+                };
             }).ToList();
 
             return Ok(new OapChatResponse
@@ -120,16 +129,21 @@ namespace MusicAI.Orchestrator.Controllers
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
             var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
 
-            var tracks = playlist.Select(track => new MusicTrackDto
+            var tracks = playlist.Select(track =>
             {
-                Id = track.Id,
-                Title = track.Title,
-                Artist = track.Artist,
-                S3Key = track.S3Key,
-                HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}",
-                StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}",
-                Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
-                Genre = track.Genre
+                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromMinutes(2)) ?? string.Empty;
+                var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                return new MusicTrackDto
+                {
+                    Id = track.Id,
+                    Title = track.Title,
+                    Artist = track.Artist,
+                    S3Key = track.S3Key,
+                    HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}{encoded}",
+                    StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}",
+                    Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
+                    Genre = track.Genre
+                };
             }).ToList();
 
             return Ok(new { oap = activePersona.Name, tracks, isNews = false });

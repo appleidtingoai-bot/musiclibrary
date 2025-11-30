@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MusicAI.Infrastructure.Services;
+using MusicAI.Orchestrator.Services;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -16,11 +17,13 @@ namespace MusicAI.Orchestrator.Controllers
     {
         private readonly IS3Service? _s3Service;
         private readonly ILogger<MusicStreamController> _logger;
+        private readonly IStreamTokenService _tokenService;
 
-        public MusicStreamController(IS3Service? s3Service, ILogger<MusicStreamController> logger)
+        public MusicStreamController(IS3Service? s3Service, ILogger<MusicStreamController> logger, IStreamTokenService tokenService)
         {
             _s3Service = s3Service;
             _logger = logger;
+            _tokenService = tokenService;
         }
 
         /// <summary>
@@ -43,6 +46,19 @@ namespace MusicAI.Orchestrator.Controllers
             {
                 _logger.LogWarning("Blocked HLS request without allowed Origin: {Origin}", origin);
                 return StatusCode(403, new { error = "Origin not allowed" });
+            }
+
+            // Validate stream token (short-lived) - query param 't'
+            var token = Request.Query.ContainsKey("t") ? Request.Query["t"].ToString() : string.Empty;
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("Blocked HLS request missing token for key: {Key}", key);
+                return StatusCode(403, new { error = "Missing token" });
+            }
+            if (!_tokenService.ValidateToken(token, out var tokenS3Key) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
+            {
+                _logger.LogWarning("Blocked HLS request with invalid token or key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key);
+                return StatusCode(403, new { error = "Invalid or expired token" });
             }
 
             // Generate HLS master playlist pointing to public stream proxy
@@ -87,6 +103,19 @@ namespace MusicAI.Orchestrator.Controllers
             {
                 _logger.LogWarning("Blocked stream request without allowed Origin: {Origin}", origin);
                 return StatusCode(403, new { error = "Origin not allowed" });
+            }
+
+            // Validate stream token (short-lived) - query param 't'
+            var token = Request.Query.ContainsKey("t") ? Request.Query["t"].ToString() : string.Empty;
+            if (string.IsNullOrEmpty(token))
+            {
+                _logger.LogWarning("Blocked stream request missing token for key: {Key}", key);
+                return StatusCode(403, new { error = "Missing token" });
+            }
+            if (!_tokenService.ValidateToken(token, out var tokenS3Key) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
+            {
+                _logger.LogWarning("Blocked stream request with invalid token or key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key);
+                return StatusCode(403, new { error = "Invalid or expired token" });
             }
 
             if (_s3Service == null)

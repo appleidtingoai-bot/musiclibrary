@@ -86,6 +86,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Stream token service for issuing short-lived stream tokens
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IStreamTokenService, MusicAI.Orchestrator.Services.StreamTokenService>();
+
 // JWT Configuration
 var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") 
     ?? builder.Configuration["Jwt:Key"] 
