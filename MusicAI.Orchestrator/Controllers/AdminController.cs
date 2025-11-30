@@ -818,7 +818,12 @@ public class AdminController : ControllerBase
         
         Response.Headers["Cache-Control"] = "public, max-age=3600"; // Cache for 1 hour for better performance
         Response.Headers["Accept-Ranges"] = "bytes";
-        Response.Headers["Access-Control-Allow-Origin"] = "*"; // Allow CORS for browser streaming
+        // Echo Origin header only if it matches allowed origins
+        var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
+        if (!string.IsNullOrEmpty(origin) && (origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+        {
+            Response.Headers["Access-Control-Allow-Origin"] = origin; // Allow CORS for browser streaming
+        }
 
         if (upstream.Content.Headers.ContentLength.HasValue)
             Response.ContentLength = upstream.Content.Headers.ContentLength.Value;

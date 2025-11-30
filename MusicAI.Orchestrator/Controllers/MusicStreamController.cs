@@ -117,11 +117,15 @@ namespace MusicAI.Orchestrator.Controllers
                     Response.ContentLength = contentLength.Value;
                 }
 
-                // Enable CORS for browser playback
-                Response.Headers["Access-Control-Allow-Origin"] = "*";
-                Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
-                Response.Headers["Access-Control-Allow-Headers"] = "Range, Content-Type";
-                Response.Headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges";
+                // Enable CORS for browser playback: echo Origin only when it's an allowed origin
+                var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
+                if (!string.IsNullOrEmpty(origin) && (origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+                {
+                    Response.Headers["Access-Control-Allow-Origin"] = origin;
+                    Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
+                    Response.Headers["Access-Control-Allow-Headers"] = "Range, Content-Type";
+                    Response.Headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges";
+                }
                 
                 // Cache for 1 hour
                 Response.Headers["Cache-Control"] = "public, max-age=3600";
@@ -157,9 +161,13 @@ namespace MusicAI.Orchestrator.Controllers
         [HttpOptions("hls/{*key}")]
         public IActionResult Options()
         {
-            Response.Headers["Access-Control-Allow-Origin"] = "*";
-            Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
-            Response.Headers["Access-Control-Allow-Headers"] = "Range, Content-Type";
+            var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
+            if (!string.IsNullOrEmpty(origin) && (origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+            {
+                Response.Headers["Access-Control-Allow-Origin"] = origin;
+                Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
+                Response.Headers["Access-Control-Allow-Headers"] = "Range, Content-Type";
+            }
             return Ok();
         }
     }

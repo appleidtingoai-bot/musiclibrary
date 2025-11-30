@@ -67,6 +67,24 @@ else
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+// Configure CORS: read allowed origins from config or env, default to localhost:3000 and your domain
+var allowedOriginsRaw = builder.Configuration["Cors:AllowedOrigins"]
+                       ?? Environment.GetEnvironmentVariable("Cors__AllowedOrigins")
+                       ?? "http://localhost:3000,https://tingoradio.ai";
+var allowedOrigins = allowedOriginsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries)
+    .Select(s => s.Trim())
+    .Where(s => !string.IsNullOrEmpty(s))
+    .ToArray();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DefaultCors", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 // JWT Configuration
 var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") 
@@ -395,6 +413,8 @@ var forwardedOptions = new ForwardedHeadersOptions
 forwardedOptions.KnownNetworks.Clear();
 forwardedOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedOptions);
+// Apply CORS policy
+app.UseCors("DefaultCors");
 
 // Development: ensure the app listens on both http and https for local testing
 if (app.Environment.IsDevelopment())
