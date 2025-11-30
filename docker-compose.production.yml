@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: musicai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-musicai}
+      POSTGRES_USER: ${POSTGRES_USER:-musicai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backup:/backup
+    ports:
+      - "5432:5432"
+    networks:
+      - musicai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-musicai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: musicai-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - musicai-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main Orchestrator (All OAPs + Admin)
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    container_name: musicai-orchestrator
+    restart: unless-stopped
+    ports:
+      - "5000:80"
+    environment:
+      # Database
+      DATABASE_URL: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-musicai};Username=${POSTGRES_USER:-musicai};Password=${POSTGRES_PASSWORD:-changeme}"
+      # Redis
+      REDIS_CONNECTION: "redis:6379,password=${REDIS_PASSWORD:-changeme},abortConnect=false"
+      # AWS S3
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION:-us-east-2}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      # Security
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_API_KEY: ${ADMIN_API_KEY}
+      # OpenAI (optional)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Application
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:80
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - musicai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/oap/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Tosin Persona (TTS + News)
+  tosin:
+    build:
+      context: .
+      dockerfile: Dockerfile.tosin
+    container_name: musicai-tosin
+    restart: unless-stopped
+    ports:
+      - "8001:80"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:80
+    env_file:
+      - .env
+    networks:
+      - musicai-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: musicai-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/musicai.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      - orchestrator
+      - tosin
+    networks:
+      - musicai-network
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  # Let's Encrypt SSL
+  certbot:
+    image: certbot/certbot
+    container_name: musicai-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  musicai-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

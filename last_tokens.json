@@ -1,0 +1,12 @@
+﻿{
+    "admin":  {
+                  "email":  "admin@local",
+                  "token":  "0b3847ea04f54771a6820e9e737a1add",
+                  "expires":  "2025-12-05T12:13:36.6354022Z"
+              },
+    "super":  {
+                  "email":  "super@local",
+                  "token":  "bdd7776edcc845338b27c05864a3c062",
+                  "expires":  "2025-12-05T12:13:36.0040808Z"
+              }
+}

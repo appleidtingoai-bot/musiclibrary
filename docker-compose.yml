@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  orchestrator:
+    build: ./MusicAI.Orchestrator
+    ports:
+      - '5000:80'
+    depends_on:
+      - streaming
+
+  streaming:
+    build: ./MusicAI.Streaming
+    ports:
+      - '6001:80'
+
+  tosin:
+    build: ./MusicAI.Personas.Tosin
+    ports:
+      - '8001:80'
+  # Copy the Tosin service for Mimi, IfeMi, Rotimi, Maka, Roman, Dozy (or add similar service definitions)

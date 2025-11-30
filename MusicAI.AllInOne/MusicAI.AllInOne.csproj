@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MusicAI.Common\MusicAI.Common.csproj" />
+    <ProjectReference Include="..\MusicAI.Infrastructure\MusicAI.Infrastructure.csproj" />
+    <ProjectReference Include="..\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj" />
+    <ProjectReference Include="..\MusicAI.Personas.Tosin\MusicAI.Personas.Tosin.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+  </ItemGroup>
+</Project>

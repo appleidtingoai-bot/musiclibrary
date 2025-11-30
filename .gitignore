@@ -1,0 +1,33 @@
+**/bin/
+**/obj/
+**/*.user
+**/*.rsuser
+**/*.suo
+**/*.vspscc
+**/*.vssscc
+.DS_Store
+/assets/
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Environment files in subdirectories
+**/.env
+**/appsettings.Development.json
+
+# Logs
+logs/
+*.log
+
+# Data and backup directories
+data/
+backup/
+
+# SSL certificates
+certbot/
+
+# nginx logs
+nginx/logs/

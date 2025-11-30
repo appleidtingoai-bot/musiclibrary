@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MusicAI.Common\MusicAI.Common.csproj" />
+    <ProjectReference Include="..\MusicAI.Subscription\MusicAI.Subscription.csproj" Condition="Exists('..\\MusicAI.Subscription\\MusicAI.Subscription.csproj')" />
+    <ProjectReference Include="..\MusicAI.Streaming\MusicAI.Streaming.csproj" Condition="Exists('..\\MusicAI.Streaming\\MusicAI.Streaming.csproj')" />
+    <ProjectReference Include="..\MusicAI.Infrastructure\MusicAI.Infrastructure.csproj" />
+    <ProjectReference Include="..\MusicAI.Agents\MusicAI.Agents.csproj" Condition="Exists('..\\MusicAI.Agents\\MusicAI.Agents.csproj')" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+      <PackageReference Include="Microsoft.Data.Sqlite" Version="7.1.13" />
+      <PackageReference Include="Polly" Version="8.1.4" />
+      <PackageReference Include="Npgsql" Version="7.0.6" />
+      <PackageReference Include="Dapper" Version="2.0.123" />
+      <PackageReference Include="StackExchange.Redis" Version="2.7.0" />
+  </ItemGroup>
+  
+  <!-- Copy .env file from solution root to output directory -->
+  <ItemGroup>
+    <None Include="..\.env" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\.env')" />
+  </ItemGroup>
+</Project>

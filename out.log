@@ -1,0 +1,1245 @@
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj : warning NU1603: MusicAI.Orchestrator depends on Microsoft.Data.Sqlite (>= 7.1.13) but Microsoft.Data.Sqlite 7.1.13 was not found. Microsoft.Data.Sqlite 8.0.0 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1603: MusicAI.Orchestrator depends on Microsoft.Data.Sqlite (>= 7.1.13) but Microsoft.Data.Sqlite 7.1.13 was not found. Microsoft.Data.Sqlite 8.0.0 was resolved instead. [C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj]
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1603: MusicAI.Orchestrator depends on Polly (>= 8.1.4) but Polly 8.1.4 was not found. Polly 8.2.0 was resolved instead. [C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj]
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj : warning NU1603: MusicAI.Orchestrator depends on Polly (>= 8.1.4) but Polly 8.1.4 was not found. Polly 8.2.0 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1603: MusicAI.Orchestrator depends on StackExchange.Redis (>= 2.7.0) but StackExchange.Redis 2.7.0 was not found. StackExchange.Redis 2.7.4 was resolved instead. [C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj]
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj : warning NU1603: MusicAI.Orchestrator depends on StackExchange.Redis (>= 2.7.0) but StackExchange.Redis 2.7.0 was not found. StackExchange.Redis 2.7.4 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1903: Package 'Npgsql' 7.0.6 has a known high severity vulnerability, https://github.com/advisories/GHSA-x9vc-6hfv-hg8c [C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj]
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj : warning NU1603: MusicAI.Orchestrator depends on Microsoft.Data.Sqlite (>= 7.1.13) but Microsoft.Data.Sqlite 7.1.13 was not found. Microsoft.Data.Sqlite 8.0.0 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj : warning NU1603: MusicAI.Orchestrator depends on Polly (>= 8.1.4) but Polly 8.1.4 was not found. Polly 8.2.0 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne\MusicAI.AllInOne.csproj : warning NU1603: MusicAI.Orchestrator depends on StackExchange.Redis (>= 2.7.0) but StackExchange.Redis 2.7.0 was not found. StackExchange.Redis 2.7.4 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1603: MusicAI.Orchestrator depends on Microsoft.Data.Sqlite (>= 7.1.13) but Microsoft.Data.Sqlite 7.1.13 was not found. Microsoft.Data.Sqlite 8.0.0 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1603: MusicAI.Orchestrator depends on Polly (>= 8.1.4) but Polly 8.1.4 was not found. Polly 8.2.0 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1603: MusicAI.Orchestrator depends on StackExchange.Redis (>= 2.7.0) but StackExchange.Redis 2.7.0 was not found. StackExchange.Redis 2.7.4 was resolved instead.
+C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.Orchestrator\MusicAI.Orchestrator.csproj : warning NU1903: Package 'Npgsql' 7.0.6 has a known high severity vulnerability, https://github.com/advisories/GHSA-x9vc-6hfv-hg8c
+Warning: could not register AdminsRepository: 3D000: database "tingoai" does not exist
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ModelBinderFactory[12]
+      Registered model binder providers, in the following order: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BinderTypeModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ServicesModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.HeaderModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FloatingPointTypeModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.EnumTypeModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.DateTimeModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.TryParseModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.CancellationTokenModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ByteArrayModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FormFileModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FormCollectionModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.KeyValuePairModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.DictionaryModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ArrayModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.CollectionModelBinderProvider, Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ComplexObjectModelBinderProvider
+MusicAI.AllInOne running on http://localhost:5000
+dbug: Microsoft.Extensions.Hosting.Internal.Host[1]
+      Hosting starting
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[63]
+      User profile is available. Using 'C:\Users\Josiah.Obaje\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+dbug: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[37]
+      Reading data from file 'C:\Users\Josiah.Obaje\AppData\Local\ASP.NET\DataProtection-Keys\key-453992c0-b1b4-4498-a2ba-5cc1fdb47703.xml'.
+dbug: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[18]
+      Found key {453992c0-b1b4-4498-a2ba-5cc1fdb47703}.
+dbug: Microsoft.AspNetCore.DataProtection.KeyManagement.DefaultKeyResolver[13]
+      Considering key {453992c0-b1b4-4498-a2ba-5cc1fdb47703} with expiration date 2026-01-14 09:58:50Z as default key.
+dbug: Microsoft.AspNetCore.DataProtection.TypeForwardingActivator[0]
+      Forwarded activator type request from Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor, Microsoft.AspNetCore.DataProtection, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60 to Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor, Microsoft.AspNetCore.DataProtection, Culture=neutral, PublicKeyToken=adb9793829ddae60
+dbug: Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor[51]
+      Decrypting secret element using Windows DPAPI.
+dbug: Microsoft.AspNetCore.DataProtection.TypeForwardingActivator[0]
+      Forwarded activator type request from Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel.AuthenticatedEncryptorDescriptorDeserializer, Microsoft.AspNetCore.DataProtection, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60 to Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel.AuthenticatedEncryptorDescriptorDeserializer, Microsoft.AspNetCore.DataProtection, Culture=neutral, PublicKeyToken=adb9793829ddae60
+dbug: Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngCbcAuthenticatedEncryptorFactory[4]
+      Opening CNG algorithm 'AES' from provider '(null)' with chaining mode CBC.
+dbug: Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.CngCbcAuthenticatedEncryptorFactory[3]
+      Opening CNG algorithm 'SHA256' from provider '(null)' with HMAC.
+dbug: Microsoft.AspNetCore.DataProtection.KeyManagement.KeyRingProvider[2]
+      Using key {453992c0-b1b4-4498-a2ba-5cc1fdb47703} as the default key.
+dbug: Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService[65]
+      Key ring with default key {453992c0-b1b4-4498-a2ba-5cc1fdb47703} was loaded during application startup.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5000
+dbug: Microsoft.AspNetCore.Hosting.Diagnostics[13]
+      Loaded hosting startup assembly MusicAI.AllInOne
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\Josiah.Obaje\Desktop\JosiahFile\mcp-agent\MusicAI.AllInOne
+LIFETIME: ApplicationStarted
+dbug: Microsoft.Extensions.Hosting.Internal.Host[2]
+      Hosting started
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DE" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DE" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.HostFiltering.HostFilteringMiddleware[0]
+      Wildcard detected, all requests with hosts will be allowed.
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DE" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 70.1758ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/superadmin/register - application/json 93
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/superadmin/register'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/superadmin/register' is valid for the request path '/api/admin/superadmin/register'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "RegisterSuperAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult RegisterSuperAdmin(SuperAdminRegisterRequest) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[44]
+      Attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest' using the name '' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[1]
+      Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+dbug: Microsoft.AspNetCore.Server.Kestrel[25]
+      Connection id "0HNHCVEJ7K9DE", Request id "0HNHCVEJ7K9DE:00000002": started reading request body.
+dbug: Microsoft.AspNetCore.Server.Kestrel[26]
+      Connection id "0HNHCVEJ7K9DE", Request id "0HNHCVEJ7K9DE:00000002": done reading request body.
+dbug: Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter[2]
+      JSON input formatter succeeded, deserializing to type 'AdminController+SuperAdminRegisterRequest'
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[45]
+      Done attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'req' of type 'AdminController+SuperAdminRegisterRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'req' of type 'AdminController+SuperAdminRegisterRequest'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type '<>f__AnonymousType2`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.DateTime, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.RegisterSuperAdmin (MusicAI.Orchestrator) in 198.4636ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DE" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/superadmin/register - 200 - application/json;+charset=utf-8 264.6520ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DE" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DE" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DE" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DF" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DF" started.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DF" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DF" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DF" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DF" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DG" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DG" started.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DG" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DG" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DG" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DG" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DH" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DH" started.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DI" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DI" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 37.7629ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 291.3134ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DJ" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DJ" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/register-admin - application/json 67
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/register-admin'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/register-admin' is valid for the request path '/api/admin/register-admin'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "RegisterAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult RegisterAdmin(AdminLoginRequest) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[44]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' using the name '' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[1]
+      Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+dbug: Microsoft.AspNetCore.Server.Kestrel[25]
+      Connection id "0HNHCVEJ7K9DJ", Request id "0HNHCVEJ7K9DJ:00000001": started reading request body.
+dbug: Microsoft.AspNetCore.Server.Kestrel[26]
+      Connection id "0HNHCVEJ7K9DJ", Request id "0HNHCVEJ7K9DJ:00000001": done reading request body.
+dbug: Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter[2]
+      JSON input formatter succeeded, deserializing to type 'AdminController+AdminLoginRequest'
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[45]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type '<>f__AnonymousType3`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.RegisterAdmin (MusicAI.Orchestrator) in 25.2879ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DJ" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/register-admin - 200 - application/json;+charset=utf-8 45.7505ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/approve/35e6b6ff008e469f958f3dc68dd353f3 - application/x-www-form-urlencoded 0
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/approve/35e6b6ff008e469f958f3dc68dd353f3'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/approve/{adminId}' is valid for the request path '/api/admin/approve/35e6b6ff008e469f958f3dc68dd353f3'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "ApproveAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult ApproveAdmin(System.String) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[44]
+      Attempting to bind parameter 'adminId' of type 'System.String' using the name 'adminId' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[45]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type '<>f__AnonymousType4`2[[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.ApproveAdmin (MusicAI.Orchestrator) in 29.5381ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DJ" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/approve/35e6b6ff008e469f958f3dc68dd353f3 - 200 - application/json;+charset=utf-8 35.0841ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/login - application/json 67
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/login'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.Login (MusicAI.Orchestrator)' with route pattern 'api/admin/login' is valid for the request path '/api/admin/login'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.Login (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.Login (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "Login", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult Login(AdminLoginRequest) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[44]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' using the name '' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[1]
+      Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+dbug: Microsoft.AspNetCore.Server.Kestrel[25]
+      Connection id "0HNHCVEJ7K9DJ", Request id "0HNHCVEJ7K9DJ:00000003": started reading request body.
+dbug: Microsoft.AspNetCore.Server.Kestrel[26]
+      Connection id "0HNHCVEJ7K9DJ", Request id "0HNHCVEJ7K9DJ:00000003": done reading request body.
+dbug: Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter[2]
+      JSON input formatter succeeded, deserializing to type 'AdminController+AdminLoginRequest'
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[45]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type '<>f__AnonymousType1`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.DateTime, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.Login (MusicAI.Orchestrator) in 8.9511ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.Login (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DJ" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/login - 200 - application/json;+charset=utf-8 10.5422ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DI" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DK" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DI" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DI" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DK" started.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DI" sending FIN because: "The Socket transport's send loop completed gracefully."
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 10.1057ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 61.5650ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/superadmin/register - application/json 91
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/superadmin/register'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/superadmin/register' is valid for the request path '/api/admin/superadmin/register'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "RegisterSuperAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult RegisterSuperAdmin(SuperAdminRegisterRequest) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[44]
+      Attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest' using the name '' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[1]
+      Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+dbug: Microsoft.AspNetCore.Server.Kestrel[25]
+      Connection id "0HNHCVEJ7K9DH", Request id "0HNHCVEJ7K9DH:00000005": started reading request body.
+dbug: Microsoft.AspNetCore.Server.Kestrel[26]
+      Connection id "0HNHCVEJ7K9DH", Request id "0HNHCVEJ7K9DH:00000005": done reading request body.
+dbug: Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter[2]
+      JSON input formatter succeeded, deserializing to type 'AdminController+SuperAdminRegisterRequest'
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[45]
+      Done attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'req' of type 'AdminController+SuperAdminRegisterRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'req' of type 'AdminController+SuperAdminRegisterRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'req' of type 'AdminController+SuperAdminRegisterRequest'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type '<>f__AnonymousType2`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.DateTime, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.RegisterSuperAdmin (MusicAI.Orchestrator) in 9.8921ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.RegisterSuperAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/superadmin/register - 200 - application/json;+charset=utf-8 17.1221ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DJ" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DJ" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DJ" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DK" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DK" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DK" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DK" stopped.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/login - application/json 70
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/login'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.Login (MusicAI.Orchestrator)' with route pattern 'api/admin/login' is valid for the request path '/api/admin/login'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.Login (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.Login (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "Login", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult Login(AdminLoginRequest) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[44]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' using the name '' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[1]
+      Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+dbug: Microsoft.AspNetCore.Server.Kestrel[25]
+      Connection id "0HNHCVEJ7K9DH", Request id "0HNHCVEJ7K9DH:00000006": started reading request body.
+dbug: Microsoft.AspNetCore.Server.Kestrel[26]
+      Connection id "0HNHCVEJ7K9DH", Request id "0HNHCVEJ7K9DH:00000006": done reading request body.
+dbug: Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter[2]
+      JSON input formatter succeeded, deserializing to type 'AdminController+AdminLoginRequest'
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[45]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type '<>f__AnonymousType1`3[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.DateTime, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.Login (MusicAI.Orchestrator) in 8.3294ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.Login (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/login - 200 - application/json;+charset=utf-8 9.2418ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/register-admin - application/json 64
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/register-admin'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/register-admin' is valid for the request path '/api/admin/register-admin'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "RegisterAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult RegisterAdmin(AdminLoginRequest) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[44]
+      Attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest' using the name '' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[1]
+      Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+dbug: Microsoft.AspNetCore.Server.Kestrel[25]
+      Connection id "0HNHCVEJ7K9DH", Request id "0HNHCVEJ7K9DH:00000007": started reading request body.
+dbug: Microsoft.AspNetCore.Server.Kestrel[26]
+      Connection id "0HNHCVEJ7K9DH", Request id "0HNHCVEJ7K9DH:00000007": done reading request body.
+dbug: Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter[2]
+      JSON input formatter succeeded, deserializing to type 'AdminController+AdminLoginRequest'
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinder[45]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'req' of type 'AdminController+AdminLoginRequest'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type '<>f__AnonymousType3`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Boolean, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.RegisterAdmin (MusicAI.Orchestrator) in 2.6015ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.RegisterAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/register-admin - 200 - application/json;+charset=utf-8 3.1599ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933 - - 0
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/approve/{adminId}' is valid for the request path '/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "ApproveAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult ApproveAdmin(System.String) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[44]
+      Attempting to bind parameter 'adminId' of type 'System.String' using the name 'adminId' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[45]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing UnauthorizedObjectResult, writing value of type '<>f__AnonymousType0`1[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.ApproveAdmin (MusicAI.Orchestrator) in 3.3517ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933 - 401 - application/json;+charset=utf-8 5.4868ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933 - - 0
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/approve/{adminId}' is valid for the request path '/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "ApproveAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult ApproveAdmin(System.String) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[44]
+      Attempting to bind parameter 'adminId' of type 'System.String' using the name 'adminId' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[45]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing UnauthorizedObjectResult, writing value of type '<>f__AnonymousType0`1[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.ApproveAdmin (MusicAI.Orchestrator) in 0.5731ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/approve/8ad58e4b6c284e8b9f1fd20235ed4933 - 401 - application/json;+charset=utf-8 7.9526ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/bulk-upload?genre=gospel - - 0
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/bulk-upload'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.BulkUpload (MusicAI.Orchestrator)' with route pattern 'api/admin/bulk-upload' is valid for the request path '/api/admin/bulk-upload'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.BulkUpload (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.BulkUpload (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "BulkUpload", controller = "Admin"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] BulkUpload(System.String) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'genre' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[44]
+      Attempting to bind parameter 'genre' of type 'System.String' using the name 'genre' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[45]
+      Done attempting to bind parameter 'genre' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'genre' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'genre' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'genre' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing UnauthorizedObjectResult, writing value of type '<>f__AnonymousType0`1[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.BulkUpload (MusicAI.Orchestrator) in 8.2576ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.BulkUpload (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DH" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/bulk-upload?genre=gospel - 401 - application/json;+charset=utf-8 29.8066ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DH" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DH" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DH" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DL" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DL" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 POST http://localhost:5000/api/admin/approve/3766ee6099404ee0a9665906e7903a34 - - 0
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1001]
+      1 candidate(s) found for the request path '/api/admin/approve/3766ee6099404ee0a9665906e7903a34'
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1005]
+      Endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)' with route pattern 'api/admin/approve/{adminId}' is valid for the request path '/api/admin/approve/3766ee6099404ee0a9665906e7903a34'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[1]
+      Request matched endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[15]
+      Static files was skipped as the request already matched an endpoint.
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "ApproveAdmin", controller = "Admin"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult ApproveAdmin(System.String) on controller AdminController (MusicAI.Orchestrator).
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of authorization filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of resource filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of action filters (in the following order): Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000), Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of exception filters (in the following order): None
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Execution plan of result filters (in the following order): Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[1]
+      Executing controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[2]
+      Executed controller factory for controller AdminController (MusicAI.Orchestrator)
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[22]
+      Attempting to bind parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[44]
+      Attempting to bind parameter 'adminId' of type 'System.String' using the name 'adminId' in request data ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinder[45]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[23]
+      Done attempting to bind parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[26]
+      Attempting to validate the bound parameter 'adminId' of type 'System.String' ...
+dbug: Microsoft.AspNetCore.Mvc.ModelBinding.ParameterBinder[27]
+      Done attempting to validate the bound parameter 'adminId' of type 'System.String'.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[11]
+      List of registered output formatters, in the following order: Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter, Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[4]
+      No information found on request to perform content negotiation.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[8]
+      Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[10]
+      Attempting to select the first formatter in the output formatters list which can write the result.
+dbug: Microsoft.AspNetCore.Mvc.Infrastructure.DefaultOutputFormatterSelector[2]
+      Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing UnauthorizedObjectResult, writing value of type '<>f__AnonymousType0`1[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action AdminController.ApproveAdmin (MusicAI.Orchestrator) in 1.1478ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'AdminController.ApproveAdmin (MusicAI.Orchestrator)'
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DL" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 POST http://localhost:5000/api/admin/approve/3766ee6099404ee0a9665906e7903a34 - 401 - application/json;+charset=utf-8 2.3906ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DM" accepted.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DL" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 0.5736ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DM" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DL" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 30.1509ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DL" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DL" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DL" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DM" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DM" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DM" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DN" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DO" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DN" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DO" started.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DN" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 3.3435ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DN" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 58.8500ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DN" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 0.5897ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DN" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 11.0275ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DO" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DO" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DO" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DP" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DP" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DN" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 0.5739ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DN" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 5.7009ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DP" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DP" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DP" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DP" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DN" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DN" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DN" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DQ" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DR" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DQ" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DQ" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 0.6019ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DR" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DQ" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 33.0215ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DQ" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 6.7285ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DQ" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 21.5067ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DR" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DR" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DR" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DR" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DS" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DS" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/api/admin/list - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/api/admin/list'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[3]
+      The request path  does not match the path filter
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DS" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/api/admin/list - 404 0 - 1.1795ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[16]
+      Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://localhost:5000/api/admin/list, Response status code: 404
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/api/admin/list - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/api/admin/list'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.StaticFiles.StaticFileMiddleware[3]
+      The request path  does not match the path filter
+dbug: Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerHandler[9]
+      AuthenticationScheme: Bearer was not authenticated.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DS" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/api/admin/list - 404 0 - 0.5444ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[16]
+      Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://localhost:5000/api/admin/list, Response status code: 404
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DQ" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DQ" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DQ" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DS" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DS" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DS" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DT" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DT" started.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DU" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DU" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DT" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 1.4623ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DT" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 38.3482ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9DV" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9DV" started.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DV" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 0.4316ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DU" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[39]
+      Connection id "0HNHCVEJ7K9E0" accepted.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DU" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DU" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[1]
+      Connection id "0HNHCVEJ7K9E0" started.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DU" sending FIN because: "The Socket transport's send loop completed gracefully."
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/index.html - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/index.html'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DT" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/index.html - 200 - text/html;charset=utf-8 0.7323ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - - -
+dbug: Microsoft.AspNetCore.Routing.Matching.DfaMatcher[1000]
+      No candidates found for the request path '/swagger/v1/swagger.json'
+dbug: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[2]
+      Request did not match any endpoints
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[9]
+      Connection id "0HNHCVEJ7K9DT" completed keep alive response.
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET http://localhost:5000/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 5.2336ms
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[6]
+      Connection id "0HNHCVEJ7K9DV" received FIN.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DV" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DV" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DV" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9DT" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9DT" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9DT" sending FIN because: "The Socket transport's send loop completed gracefully."
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[10]
+      Connection id "0HNHCVEJ7K9E0" disconnecting.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Connections[2]
+      Connection id "0HNHCVEJ7K9E0" stopped.
+dbug: Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets[7]
+      Connection id "0HNHCVEJ7K9E0" sending FIN because: "The Socket transport's send loop completed gracefully."
