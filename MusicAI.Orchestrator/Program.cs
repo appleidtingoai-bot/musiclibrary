@@ -401,24 +401,20 @@ app.UseMiddleware<RateLimitMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger (enabled in Development or via configuration)
-var enableSwaggerUi = app.Configuration.GetValue<bool>("Swagger:Enabled", app.Environment.IsDevelopment());
-if (enableSwaggerUi)
+// Swagger (enabled in all environments for API documentation)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "MusicAI Orchestrator V1");
-        c.RoutePrefix = "swagger";
-        c.DisplayRequestDuration();
-        c.EnableTryItOutByDefault();
-        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
-        c.ConfigObject.AdditionalItems["persistAuthorization"] = true; // keep token across refreshes
-    });
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MusicAI Orchestrator V1");
+    c.RoutePrefix = "swagger";
+    c.DisplayRequestDuration();
+    c.EnableTryItOutByDefault();
+    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+    c.ConfigObject.AdditionalItems["persistAuthorization"] = true; // keep token across refreshes
+});
 
-    // Redirect root to swagger for convenience
-    app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
-}
+// Redirect root to swagger for convenience
+app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
 // Ensure routing and controllers are mapped
 app.MapControllers();
