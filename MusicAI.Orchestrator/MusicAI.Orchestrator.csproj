@@ -12,6 +12,7 @@
     <ProjectReference Include="..\MusicAI.Agents\MusicAI.Agents.csproj" Condition="Exists('..\\MusicAI.Agents\\MusicAI.Agents.csproj')" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
@@ -20,7 +21,7 @@
       <PackageReference Include="Polly" Version="8.1.4" />
       <PackageReference Include="Npgsql" Version="7.0.6" />
       <PackageReference Include="Dapper" Version="2.0.123" />
-      <PackageReference Include="StackExchange.Redis" Version="2.7.0" />
+      <PackageReference Include="StackExchange.Redis" Version="2.7.27" />
   </ItemGroup>
   
   <!-- Copy .env file from solution root to output directory -->

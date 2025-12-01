@@ -8,6 +8,7 @@ using MusicAI.Infrastructure.Services;
 using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using MusicAI.Orchestrator.Middleware;
 
 // Load local .env into environment variables so running in local dev picks up AWS/Postgres keys
@@ -65,6 +66,34 @@ else
 }
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure distributed cache FIRST (Redis for production, in-memory for development)
+var redisConnection = Environment.GetEnvironmentVariable("REDIS_CONNECTION")
+    ?? builder.Configuration["Redis:Connection"];
+
+if (!string.IsNullOrEmpty(redisConnection))
+{
+    try
+    {
+        builder.Services.AddStackExchangeRedisCache(options =>
+        {
+            options.Configuration = redisConnection;
+            options.InstanceName = "MusicAI:";
+        });
+        Console.WriteLine($"✓ Redis cache configured: {redisConnection}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠ Redis connection failed, falling back to in-memory cache: {ex.Message}");
+        builder.Services.AddDistributedMemoryCache();
+    }
+}
+else
+{
+    Console.WriteLine("⚠ No Redis connection configured, using in-memory cache (not suitable for production)");
+    builder.Services.AddDistributedMemoryCache();
+}
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 // Configure CORS: read allowed origins from config or env, default to localhost:3000 and your domain
@@ -88,6 +117,21 @@ builder.Services.AddCors(options =>
 
 // Stream token service for issuing short-lived stream tokens
 builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IStreamTokenService, MusicAI.Orchestrator.Services.StreamTokenService>();
+
+// Spotify-like features: Queue management, Quality/Adaptive streaming, Audio processing
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IQueueService, MusicAI.Orchestrator.Services.QueueService>();
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IQualityService, MusicAI.Orchestrator.Services.QualityService>();
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IAudioProcessingService, MusicAI.Orchestrator.Services.AudioProcessingService>();
+
+// Collaborative playlists repository
+try
+{
+    builder.Services.AddSingleton<MusicAI.Orchestrator.Data.IPlaylistsRepository, MusicAI.Orchestrator.Data.PlaylistsRepository>();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Warning: could not register PlaylistsRepository: {ex.Message}");
+}
 
 // JWT Configuration
 var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") 
@@ -267,7 +311,7 @@ try
               ?? Environment.GetEnvironmentVariable("AWS_REGION");
 
     // Log resolved configuration (mask secrets)
-    string Mask(string s) => string.IsNullOrEmpty(s) ? "(none)" : (s.Length <= 6 ? "***" : s.Substring(0, 4) + "***" + s.Substring(s.Length - 2));
+    string Mask(string? s) => string.IsNullOrEmpty(s) ? "(none)" : (s.Length <= 6 ? "***" : s.Substring(0, 4) + "***" + s.Substring(s.Length - 2));
     System.Console.WriteLine($"Resolved S3 bucket: {(string.IsNullOrEmpty(s3Bucket) ? "(none)" : s3Bucket)}");
     System.Console.WriteLine($"Resolved S3 endpoint: {(string.IsNullOrEmpty(s3Endpoint) ? "(none)" : s3Endpoint)}");
     System.Console.WriteLine($"Resolved AWS access key: {Mask(accessKey)}");
@@ -282,7 +326,7 @@ try
     {
         // If S3 is not configured, register a null fallback so the app still builds.
         // Note: this registers a null IS3Service; callers should handle a null service or you can replace this with a proper local implementation.
-        builder.Services.AddSingleton<MusicAI.Infrastructure.Services.IS3Service>(sp => null);
+        builder.Services.AddSingleton<MusicAI.Infrastructure.Services.IS3Service>(sp => null!);
         System.Console.WriteLine("AWS S3 not configured. Registered null IS3Service fallback (no uploads will be available).");
         System.Console.WriteLine("To enable real S3, set AWS__S3Bucket, AWS__AccessKey, AWS__SecretKey and either AWS__Region or AWS__S3Endpoint in your .env or environment.");
     }

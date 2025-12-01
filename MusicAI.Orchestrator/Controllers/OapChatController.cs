@@ -150,6 +150,89 @@ namespace MusicAI.Orchestrator.Controllers
         }
 
         /// <summary>
+        /// [Spotify-like] Get continuous playlist as single M3U8 manifest - plays all tracks sequentially
+        /// Frontend plays ONE URL and backend handles track transitions
+        /// </summary>
+        [HttpGet("playlist/{userId}")]
+        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 20)
+        {
+            var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
+            var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
+            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
+
+            // Generate M3U8 playlist with all tracks as sequential segments
+            var m3u8 = "#EXTM3U\n";
+            m3u8 += "#EXT-X-VERSION:3\n";
+            m3u8 += "#EXT-X-TARGETDURATION:600\n"; // Max 10 minutes per track
+            m3u8 += "#EXT-X-PLAYLIST-TYPE:VOD\n"; // Video On Demand (static playlist)
+
+            foreach (var track in playlist)
+            {
+                var duration = track.DurationSeconds ?? 180; // Default 3 minutes
+                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromMinutes(30)) ?? string.Empty;
+                var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                var streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}";
+
+                m3u8 += $"#EXTINF:{duration},{track.Artist} - {track.Title}\n";
+                m3u8 += $"{streamUrl}\n";
+            }
+
+            m3u8 += "#EXT-X-ENDLIST\n";
+
+            return Content(m3u8, "application/vnd.apple.mpegurl");
+        }
+
+        /// <summary>
+        /// [Spotify-like] Get playlist metadata without URLs - for frontend queue display
+        /// Frontend can request URLs on-demand when needed
+        /// </summary>
+        [HttpGet("playlist-metadata/{userId}")]
+        public async Task<IActionResult> GetPlaylistMetadata(string userId, [FromQuery] int count = 20)
+        {
+            var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
+            var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
+            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
+
+            var metadata = playlist.Select(track => new
+            {
+                id = track.Id,
+                title = track.Title,
+                artist = track.Artist,
+                s3Key = track.S3Key,
+                genre = track.Genre,
+                durationSeconds = track.DurationSeconds
+            }).ToList();
+
+            return Ok(new
+            {
+                oap = activePersona.Name,
+                tracks = metadata,
+                totalCount = metadata.Count
+            });
+        }
+
+        /// <summary>
+        /// [Spotify-like] Get tokenized URL for specific track on-demand
+        /// Enables pre-fetching next tracks while playing current
+        /// </summary>
+        [HttpGet("track-url")]
+        public IActionResult GetTrackUrl([FromQuery] string s3Key, [FromQuery] int ttlMinutes = 5)
+        {
+            if (string.IsNullOrEmpty(s3Key))
+                return BadRequest(new { error = "s3Key is required" });
+
+            var token = _tokenService?.GenerateToken(s3Key, TimeSpan.FromMinutes(ttlMinutes)) ?? string.Empty;
+            var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+
+            return Ok(new
+            {
+                hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{s3Key}{encoded}",
+                streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{s3Key}{encoded}",
+                expiresIn = ttlMinutes * 60 // seconds
+            });
+        }
+
+        /// <summary>
         /// Get current active OAP information
         /// </summary>
         [HttpGet("current")]

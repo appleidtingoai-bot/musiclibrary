@@ -8,9 +8,12 @@ namespace MusicAI.Infrastructure.Services
     public interface IS3Service
     {
         Task<string> UploadFileAsync(string key, Stream stream, string contentType);
+        Task<bool> UploadFileAsync(string localFilePath, string s3Key, string contentType);
+        Task<bool> DownloadFileAsync(string s3Key, string localFilePath);
         Task<string> GetPresignedUrlAsync(string key, TimeSpan expiry);
         Task DeleteObjectAsync(string key);
         Task<IEnumerable<string>> ListObjectsAsync(string prefix);
+        Task<bool> ObjectExistsAsync(string key);
     }
 
     public class S3Service : IS3Service
@@ -143,6 +146,73 @@ namespace MusicAI.Infrastructure.Services
             } while (!string.IsNullOrEmpty(continuationToken));
 
             return list;
+        }
+
+        public async Task<bool> UploadFileAsync(string localFilePath, string s3Key, string contentType)
+        {
+            try
+            {
+                using var fileStream = File.OpenRead(localFilePath);
+                var request = new TransferUtilityUploadRequest
+                {
+                    InputStream = fileStream,
+                    Key = s3Key,
+                    BucketName = _bucket,
+                    ContentType = contentType,
+                    CannedACL = S3CannedACL.Private
+                };
+                var tu = new TransferUtility(_s3);
+                await tu.UploadAsync(request);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"S3 upload failed for {localFilePath} -> {s3Key}: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<bool> DownloadFileAsync(string s3Key, string localFilePath)
+        {
+            try
+            {
+                var request = new GetObjectRequest
+                {
+                    BucketName = _bucket,
+                    Key = s3Key
+                };
+
+                using var response = await _s3.GetObjectAsync(request);
+                using var fileStream = File.Create(localFilePath);
+                await response.ResponseStream.CopyToAsync(fileStream);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"S3 download failed for {s3Key} -> {localFilePath}: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<bool> ObjectExistsAsync(string key)
+        {
+            try
+            {
+                var request = new GetObjectMetadataRequest
+                {
+                    BucketName = _bucket,
+                    Key = key
+                };
+                await _s3.GetObjectMetadataAsync(request);
+                return true;
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+            catch (Exception)
+            {
+                // Other errors mean we can't determine, so return false
+                return false;
+            }
         }
     }
 }

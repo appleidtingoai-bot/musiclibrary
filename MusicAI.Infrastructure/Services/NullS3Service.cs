@@ -59,5 +59,45 @@ namespace MusicAI.Infrastructure.Services
             if (!string.IsNullOrEmpty(prefix)) files = files.Where(f => f.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
             return Task.FromResult(files);
         }
+
+        public Task<bool> UploadFileAsync(string localFilePath, string s3Key, string contentType)
+        {
+            try
+            {
+                var path = LocalPathForKey(s3Key);
+                Directory.CreateDirectory(Path.GetDirectoryName(path) ?? _baseDir);
+                File.Copy(localFilePath, path, overwrite: true);
+                return Task.FromResult(true);
+            }
+            catch
+            {
+                return Task.FromResult(false);
+            }
+        }
+
+        public Task<bool> DownloadFileAsync(string s3Key, string localFilePath)
+        {
+            try
+            {
+                var path = LocalPathForKey(s3Key);
+                if (File.Exists(path))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(localFilePath) ?? "");
+                    File.Copy(path, localFilePath, overwrite: true);
+                    return Task.FromResult(true);
+                }
+                return Task.FromResult(false);
+            }
+            catch
+            {
+                return Task.FromResult(false);
+            }
+        }
+
+        public Task<bool> ObjectExistsAsync(string key)
+        {
+            var path = LocalPathForKey(key);
+            return Task.FromResult(File.Exists(path));
+        }
     }
 }
