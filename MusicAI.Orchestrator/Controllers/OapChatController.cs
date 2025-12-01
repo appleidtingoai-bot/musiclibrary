@@ -176,7 +176,7 @@ namespace MusicAI.Orchestrator.Controllers
                     s3Key = track.S3Key,
                     genre = track.Genre,
                     duration = track.DurationSeconds,
-                    url = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}"
+                    hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}{encoded}"
                 };
             }).ToList();
 
