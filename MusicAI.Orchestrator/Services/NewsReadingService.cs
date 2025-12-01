@@ -65,10 +65,17 @@ namespace MusicAI.Orchestrator.Services
             // Automatic news disabled until TTS integration with ElevenLabs/Azure is complete
             // This allows other OAPs to work normally without being interrupted by placeholder news
             
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
-                // Service kept alive for manual triggers only
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                    // Service kept alive for manual triggers only
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Expected during shutdown
             }
         }
 
