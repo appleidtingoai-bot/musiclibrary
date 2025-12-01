@@ -151,50 +151,7 @@ namespace MusicAI.Orchestrator.Controllers
 
         /// <summary>
         /// [Spotify-like] Lightweight playlist - returns small initial batch (5 tracks) for instant playback
-        /// Optimized for quick load (under 35KB). Includes adaptive buffering configuration.
-        /// Frontend requests more tracks as needed for infinite playback.
-        /// </summary>
-        [HttpGet("playlist/{userId}")]
-        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 5)
-        {
-            var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
-            var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
-            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
-
-            var tracks = playlist.Select(track => 
-            {
-                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromHours(24)) ?? string.Empty;
-                var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
-                
-                return new
-                {
-                    id = track.Id,
-                    title = track.Title,
-                    artist = track.Artist,
-                    s3Key = track.S3Key,
-                    genre = track.Genre,
-                    duration = track.DurationSeconds,
-                    url = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}"
-                };
-            }).ToList();
-
-            return Ok(new
-            {
-                oap = activePersona.Name,
-                tracks,
-                hasMore = true,
-                nextUrl = $"{Request.Scheme}://{Request.Host}/api/oap/playlist/{userId}?count=20",
-                bufferConfig = new
-                {
-                    // Adaptive buffering for smooth playback on all network conditions
-                    minBufferSeconds = 3,      // Start playing after 3 seconds buffered (fast start)
-                    maxBufferSeconds = 30,     // Buffer up to 30 seconds ahead (handles network drops)
-                    prefetchTracks = 2,        // Prefetch next 2 tracks in background
-                    resumeBufferSeconds = 5    // Resume playback after 5 seconds when paused/reconnected
-                }
-            });
-        }
-
+        /// Optimized for quick load (under 35KB). Includes adaptive 
         /// <summary>
         /// Get more tracks for queue - lightweight metadata only, request URLs via /track-url when needed
         /// </summary>
