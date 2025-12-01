@@ -338,7 +338,6 @@ catch (Exception ex)
     // Log but don't crash if AWS config is missing
     System.Console.WriteLine($"Warning: Could not register AWS services: {ex.Message}. Swagger will still be available.");
 }
-builder.Services.AddSingleton<Func<string, MusicAI.Common.Models.User>>(sp => (id) => new MusicAI.Common.Models.User(id, "demo@example.com", true, 200, "NG", "127.0.0.1"));
 
 // register AdminsRepository (using same Postgres connection string)
 try

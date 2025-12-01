@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using MusicAI.Common.Models;
 using MusicAI.Orchestrator.Services;
@@ -14,6 +15,7 @@ namespace MusicAI.Orchestrator.Controllers
 {
     [ApiController]
     [Route("api/oap")]
+    [Authorize] // Require authentication for all music/playlist endpoints
     public class OapChatController : ControllerBase
     {
         private readonly List<PersonaConfig> _personas;
