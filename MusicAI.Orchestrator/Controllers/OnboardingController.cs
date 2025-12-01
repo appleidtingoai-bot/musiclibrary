@@ -135,6 +135,111 @@ public class OnboardingController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Refresh token from HttpOnly cookie - extends user session by 7 days
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("refresh-token")]
+    public IActionResult RefreshToken()
+    {
+        try
+        {
+            // Try to get token from cookie
+            if (!Request.Cookies.TryGetValue("MusicAI.Auth", out var token) || string.IsNullOrEmpty(token))
+            {
+                return Unauthorized(new { error = "No authentication cookie found" });
+            }
+
+            // Parse JWT manually to extract userId and validate
+            var parts = token.Split('.');
+            if (parts.Length != 3)
+                return Unauthorized(new { error = "Invalid token format" });
+
+            try
+            {
+                // Decode payload (base64url)
+                var payload = parts[1].Replace('-', '+').Replace('_', '/');
+                switch (payload.Length % 4)
+                {
+                    case 2: payload += "=="; break;
+                    case 3: payload += "="; break;
+                }
+                var payloadBytes = Convert.FromBase64String(payload);
+                var payloadJson = Encoding.UTF8.GetString(payloadBytes);
+                var payloadDict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson);
+
+                if (payloadDict == null)
+                    return Unauthorized(new { error = "Invalid token payload" });
+
+                // Check expiration
+                if (payloadDict.TryGetValue("exp", out var expElement))
+                {
+                    var exp = expElement.GetInt64();
+                    var expDateTime = DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
+                    if (expDateTime < DateTime.UtcNow)
+                    {
+                        Response.Cookies.Delete("MusicAI.Auth");
+                        return Unauthorized(new { error = "Token expired, please login again" });
+                    }
+                }
+
+                // Extract userId
+                var userId = payloadDict.TryGetValue("sub", out var subElement) ? subElement.GetString() : null;
+                if (string.IsNullOrEmpty(userId))
+                    return Unauthorized(new { error = "Invalid token claims" });
+
+                // Get user from database
+                var user = _usersRepo.GetById(userId);
+                if (user == null)
+                    return Unauthorized(new { error = "User not found" });
+
+                // Issue new token with extended expiry
+                var role = "User";
+                var (newToken, expires) = CreateJwtToken(userId, role, isSubscribed: user.IsSubscribed);
+
+                // Update cookie with new token
+                var cookieOptions = new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = Request.IsHttps,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = expires
+                };
+                Response.Cookies.Append("MusicAI.Auth", newToken, cookieOptions);
+
+                return Ok(new
+                {
+                    userId = user.Id,
+                    token = newToken,
+                    expires,
+                    role,
+                    credits = user.Credits,
+                    isSubscribed = user.IsSubscribed,
+                    email = user.Email
+                });
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new { error = "Invalid token", detail = ex.Message });
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Token refresh failed", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Logout - clears user authentication cookie
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("MusicAI.Auth");
+        return Ok(new { message = "Logged out successfully" });
+    }
+
     [Authorize]
     [HttpPost("select-location")]
     public IActionResult SelectLocation([FromBody] LocationRequest req)
@@ -188,9 +293,8 @@ public class OnboardingController : ControllerBase
         var key = _configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_SECRET") ?? "dev_secret_change_me";
         var issuer = _configuration["Jwt:Issuer"] ?? Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "MusicAI";
         var audience = _configuration["Jwt:Audience"] ?? Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "MusicAIUsers";
-        var expiresMinutes = int.TryParse(_configuration["Jwt:ExpiresMinutes"] ?? Environment.GetEnvironmentVariable("JWT_EXPIRES_MINUTES"), out var m) ? m : 60;
-
-        var expires = DateTime.UtcNow.AddMinutes(expiresMinutes);
+        // Extended to 7 days for persistent sessions
+        var expires = DateTime.UtcNow.AddDays(7);
 
         var header = new { alg = "HS256", typ = "JWT" };
         // Add extra entropy to the JWT payload so the resulting token is longer and harder to guess.

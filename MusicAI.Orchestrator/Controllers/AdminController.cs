@@ -90,6 +90,16 @@ public class AdminController : ControllerBase
             var securityToken = handler.CreateToken(tokenDescriptor);
             var jwt = handler.WriteToken(securityToken);
 
+            // Set HttpOnly cookie for automatic token refresh
+            Response.Cookies.Append("MusicAI.Auth", jwt, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // HTTPS only
+                SameSite = SameSiteMode.Strict,
+                Expires = expires,
+                Path = "/"
+            });
+
             return Ok(new { token = jwt, expires, isSuper = record.IsSuperAdmin, role = record.IsSuperAdmin ? "SuperAdmin" : "Admin" });
         }
         catch (Exception ex)
@@ -134,6 +144,17 @@ public class AdminController : ControllerBase
             };
             var securityToken = handler.CreateToken(tokenDescriptor);
             var jwt = handler.WriteToken(securityToken);
+
+            // Set HttpOnly cookie
+            Response.Cookies.Append("MusicAI.Auth", jwt, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = expires,
+                Path = "/"
+            });
+
              return Ok(new { token = jwt, expires, isSuper = existing.IsSuperAdmin, role = existing.IsSuperAdmin ? "SuperAdmin" : "Admin", message = "Upgraded to superadmin" });
         }
 
@@ -168,6 +189,17 @@ public class AdminController : ControllerBase
         };
         var securityToken2 = handler2.CreateToken(tokenDescriptor2);
         var jwt2 = handler2.WriteToken(securityToken2);
+
+        // Set HttpOnly cookie
+        Response.Cookies.Append("MusicAI.Auth", jwt2, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict,
+            Expires = expires2,
+            Path = "/"
+        });
+
         return Ok(new { token = jwt2, expires = expires2, isSuper = true, role = "SuperAdmin", message = "Superadmin registered" });
     }
 
@@ -186,6 +218,113 @@ public class AdminController : ControllerBase
         };
         _adminsRepo.Create(rec);
         return Ok(new { id = rec.Id, approved = rec.Approved });
+    }
+
+    /// <summary>
+    /// Refresh token from HttpOnly cookie - call on page load to restore session
+    /// </summary>
+    [HttpPost("refresh-token")]
+    public IActionResult RefreshToken()
+    {
+        try
+        {
+            // Try to get token from cookie
+            if (!Request.Cookies.TryGetValue("MusicAI.Auth", out var token) || string.IsNullOrEmpty(token))
+            {
+                return Unauthorized(new { error = "No authentication cookie found" });
+            }
+
+            // Validate and decode the token
+            var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "dev_jwt_secret_minimum_32_characters_required_for_hs256";
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
+            var handler = new JwtSecurityTokenHandler();
+
+            try
+            {
+                var principal = handler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = key,
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30)
+                }, out var validatedToken);
+
+                // Extract claims
+                var email = principal.FindFirst(ClaimTypes.Email)?.Value;
+                var isSuperClaim = principal.FindFirst("isSuper")?.Value;
+                var isSuper = isSuperClaim == "true";
+
+                if (string.IsNullOrEmpty(email))
+                    return Unauthorized(new { error = "Invalid token claims" });
+
+                // Token is valid, issue a new one with extended expiry
+                var record = _adminsRepo.GetByEmail(email);
+                if (record == null || !record.Approved)
+                    return Unauthorized(new { error = "Admin not found or not approved" });
+
+                var newClaims = new[] {
+                    new Claim(ClaimTypes.Email, record.Email),
+                    new Claim(ClaimTypes.Role, record.IsSuperAdmin ? "SuperAdmin" : "Admin"),
+                    new Claim("isSuper", record.IsSuperAdmin.ToString().ToLower())
+                };
+
+                var expires = DateTime.UtcNow.AddDays(7);
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Subject = new ClaimsIdentity(newClaims),
+                    Expires = expires,
+                    SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
+                };
+
+                var newSecurityToken = handler.CreateToken(tokenDescriptor);
+                var newJwt = handler.WriteToken(newSecurityToken);
+
+                // Update cookie with new token
+                Response.Cookies.Append("MusicAI.Auth", newJwt, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = expires,
+                    Path = "/"
+                });
+
+                return Ok(new
+                {
+                    token = newJwt,
+                    expires,
+                    isSuper = record.IsSuperAdmin,
+                    role = record.IsSuperAdmin ? "SuperAdmin" : "Admin",
+                    email = record.Email
+                });
+            }
+            catch (SecurityTokenExpiredException)
+            {
+                // Token expired - clear cookie and require login
+                Response.Cookies.Delete("MusicAI.Auth");
+                return Unauthorized(new { error = "Token expired, please login again" });
+            }
+            catch (Exception ex)
+            {
+                return Unauthorized(new { error = "Invalid token", detail = ex.Message });
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Token refresh failed", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Logout - clears authentication cookie
+    /// </summary>
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("MusicAI.Auth");
+        return Ok(new { message = "Logged out successfully" });
     }
 
     [HttpPost("approve/{adminId}")]
@@ -1404,7 +1543,52 @@ public class AdminController : ControllerBase
 
             foreach (var obj in s3Objects)
             {
-                var key = obj.Key;
+                // Support both implementations that return simple string keys and ones that return objects with metadata.
+                string key = string.Empty;
+                long size = 0;
+                DateTime? lastModified = null;
+
+                // If the enumerable yields string keys
+                if (obj is string s)
+                {
+                    key = s;
+                }
+                else
+                {
+                    // Attempt to read common properties via reflection (Key, Size, LastModified)
+                    try
+                    {
+                        var t = obj?.GetType();
+                        if (t != null)
+                        {
+                            var keyProp = t.GetProperty("Key");
+                            if (keyProp != null)
+                                key = keyProp.GetValue(obj) as string ?? string.Empty;
+
+                            var sizeProp = t.GetProperty("Size");
+                            if (sizeProp != null)
+                            {
+                                var val = sizeProp.GetValue(obj);
+                                if (val is long l) size = l;
+                                else if (val is int i) size = i;
+                                else if (val is string sv && long.TryParse(sv, out var pl)) size = pl;
+                            }
+
+                            var lmProp = t.GetProperty("LastModified") ?? t.GetProperty("LastModifiedUtc");
+                            if (lmProp != null)
+                            {
+                                var val = lmProp.GetValue(obj);
+                                if (val is DateTime dt) lastModified = dt;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // ignore reflection errors and fall back to ToString()
+                        key = obj?.ToString() ?? string.Empty;
+                    }
+                }
+
                 if (string.IsNullOrWhiteSpace(key) || !key.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
                     continue;
 
@@ -1423,8 +1607,8 @@ public class AdminController : ControllerBase
                     s3Key = key,
                     fileName = fileName,
                     folder = folderName,
-                    size = obj.Size,
-                    lastModified = obj.LastModified
+                    size = size,
+                    lastModified = lastModified
                 });
             }
 
@@ -1494,21 +1678,24 @@ public class AdminController : ControllerBase
                 if (newKey == req.S3Key)
                     return BadRequest(new { error = "Target path is the same as current path" });
 
+                // TODO: Fix S3Service interface to support move operation
                 // Check if target already exists
-                var exists = await _s3.ObjectExistsAsync(newKey);
-                if (exists)
-                    return Conflict(new { error = $"File already exists at {newKey}" });
+                // var exists = await _s3.ObjectExistsAsync(newKey);
+                // if (exists)
+                //     return Conflict(new { error = $"File already exists at {newKey}" });
 
                 // Download from old location
-                using var stream = await _s3.DownloadFileAsync(req.S3Key);
-                if (stream == null)
-                    return NotFound(new { error = $"File not found: {req.S3Key}" });
+                // using var stream = await _s3.DownloadFileAsync(req.S3Key);
+                // if (stream == null)
+                //     return NotFound(new { error = $"File not found: {req.S3Key}" });
 
                 // Upload to new location
-                await _s3.UploadFileAsync(newKey, stream, "audio/mpeg");
+                // await _s3.UploadFileAsync(newKey, stream, "audio/mpeg");
 
                 // Delete old file
-                await DeleteS3ObjectAsync(_s3, req.S3Key);
+                // await DeleteS3ObjectAsync(_s3, req.S3Key);
+                
+                return StatusCode(501, new { error = "Move operation not yet implemented" });
 
                 return Ok(new
                 {

@@ -154,7 +154,7 @@ namespace MusicAI.Orchestrator.Controllers
         /// Frontend plays ONE URL and backend handles track transitions
         /// </summary>
         [HttpGet("playlist/{userId}")]
-        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 20)
+        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 100)
         {
             var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
@@ -169,7 +169,7 @@ namespace MusicAI.Orchestrator.Controllers
             foreach (var track in playlist)
             {
                 var duration = track.DurationSeconds ?? 180; // Default 3 minutes
-                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromMinutes(30)) ?? string.Empty;
+                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromHours(2)) ?? string.Empty; // Extended for continuous playback
                 var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
                 var streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}";
 
@@ -177,7 +177,8 @@ namespace MusicAI.Orchestrator.Controllers
                 m3u8 += $"{streamUrl}\n";
             }
 
-            m3u8 += "#EXT-X-ENDLIST\n";
+            // Note: Removed #EXT-X-ENDLIST for continuous playback
+            // Frontend should request /api/oap/playlist-metadata/{userId}?count=100 for more tracks when queue runs low
 
             return Content(m3u8, "application/vnd.apple.mpegurl");
         }
@@ -187,7 +188,7 @@ namespace MusicAI.Orchestrator.Controllers
         /// Frontend can request URLs on-demand when needed
         /// </summary>
         [HttpGet("playlist-metadata/{userId}")]
-        public async Task<IActionResult> GetPlaylistMetadata(string userId, [FromQuery] int count = 20)
+        public async Task<IActionResult> GetPlaylistMetadata(string userId, [FromQuery] int count = 100)
         {
             var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
