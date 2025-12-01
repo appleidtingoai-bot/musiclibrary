@@ -1,9 +1,14 @@
 name: Deploy Roman OAP
 
+# Disabled automatic deployment - deploy manually via SSH
+# Uncomment to re-enable:
+# on:
+#   push:
+#     branches: [ main, master ]
+#   workflow_dispatch:
+
 on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch:  # Only allow manual trigger from GitHub UI
 
 env:
   REGISTRY: ghcr.io
