@@ -1378,4 +1378,159 @@ public class AdminController : ControllerBase
             }
         });
     }
+
+    /// <summary>
+    /// Get list of all uploaded music files with counts, grouped by folder/genre
+    /// </summary>
+    [HttpGet("music/list")]
+    public async Task<IActionResult> GetMusicList(
+        [FromQuery] string? folder = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        if (!IsAdminAuthorized(out var ae, out var _) || string.IsNullOrEmpty(ae))
+            return Unauthorized(new { error = "admin required" });
+
+        try
+        {
+            if (_s3 == null)
+                return StatusCode(500, new { error = "S3 service not configured" });
+
+            var allFiles = new List<object>();
+            var folderCounts = new Dictionary<string, int>();
+
+            // List all files in music/ prefix
+            var s3Objects = await _s3.ListObjectsAsync("music/");
+
+            foreach (var obj in s3Objects)
+            {
+                var key = obj.Key;
+                if (string.IsNullOrWhiteSpace(key) || !key.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // Extract folder from path: music/afrobeats/song.mp3 -> afrobeats
+                var parts = key.Split('/');
+                var folderName = parts.Length > 2 ? parts[1] : "uncategorized";
+                var fileName = parts[parts.Length - 1];
+
+                // Count by folder
+                if (!folderCounts.ContainsKey(folderName))
+                    folderCounts[folderName] = 0;
+                folderCounts[folderName]++;
+
+                allFiles.Add(new
+                {
+                    s3Key = key,
+                    fileName = fileName,
+                    folder = folderName,
+                    size = obj.Size,
+                    lastModified = obj.LastModified
+                });
+            }
+
+            // Filter by folder if specified
+            var filteredFiles = folder != null
+                ? allFiles.Where(f => ((dynamic)f).folder == folder).ToList()
+                : allFiles;
+
+            // Pagination
+            var totalCount = filteredFiles.Count;
+            var paginatedFiles = filteredFiles
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Ok(new
+            {
+                totalFiles = totalCount,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                folderCounts = folderCounts.OrderByDescending(kvp => kvp.Value).ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+                files = paginatedFiles
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to list music", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Delete or move music file to a different folder
+    /// </summary>
+    [HttpPost("music/manage")]
+    public async Task<IActionResult> ManageMusic([FromBody] ManageMusicRequest req)
+    {
+        if (!IsAdminAuthorized(out var ae, out var _) || string.IsNullOrEmpty(ae))
+            return Unauthorized(new { error = "admin required" });
+
+        try
+        {
+            if (_s3 == null)
+                return StatusCode(500, new { error = "S3 service not configured" });
+
+            if (string.IsNullOrWhiteSpace(req.S3Key))
+                return BadRequest(new { error = "s3Key is required" });
+
+            if (req.Action == "delete")
+            {
+                // Delete the file
+                await DeleteS3ObjectAsync(_s3, req.S3Key);
+                return Ok(new { message = $"Deleted {req.S3Key}" });
+            }
+            else if (req.Action == "move")
+            {
+                if (string.IsNullOrWhiteSpace(req.TargetFolder))
+                    return BadRequest(new { error = "targetFolder is required for move action" });
+
+                // Extract filename from current key
+                var parts = req.S3Key.Split('/');
+                var fileName = parts[parts.Length - 1];
+
+                // Construct new key: music/targetFolder/filename.mp3
+                var newKey = $"music/{req.TargetFolder.Trim().ToLower()}/{fileName}";
+
+                if (newKey == req.S3Key)
+                    return BadRequest(new { error = "Target path is the same as current path" });
+
+                // Check if target already exists
+                var exists = await _s3.ObjectExistsAsync(newKey);
+                if (exists)
+                    return Conflict(new { error = $"File already exists at {newKey}" });
+
+                // Download from old location
+                using var stream = await _s3.DownloadFileAsync(req.S3Key);
+                if (stream == null)
+                    return NotFound(new { error = $"File not found: {req.S3Key}" });
+
+                // Upload to new location
+                await _s3.UploadFileAsync(newKey, stream, "audio/mpeg");
+
+                // Delete old file
+                await DeleteS3ObjectAsync(_s3, req.S3Key);
+
+                return Ok(new
+                {
+                    message = $"Moved {req.S3Key} to {newKey}",
+                    oldKey = req.S3Key,
+                    newKey = newKey
+                });
+            }
+            else
+            {
+                return BadRequest(new { error = "Invalid action. Use 'delete' or 'move'" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to manage music", detail = ex.Message });
+        }
+    }
+
+    public record ManageMusicRequest(
+        string S3Key,
+        string Action, // "delete" or "move"
+        string? TargetFolder // required for "move" action (e.g., "afrobeats", "gospel", "hip-hop")
+    );
 }
