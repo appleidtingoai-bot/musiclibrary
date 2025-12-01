@@ -150,45 +150,56 @@ namespace MusicAI.Orchestrator.Controllers
         }
 
         /// <summary>
-        /// [Spotify-like] Get continuous playlist as single M3U8 manifest - plays all tracks sequentially
-        /// Frontend plays ONE URL and backend handles track transitions
+        /// [Spotify-like] Lightweight playlist - returns small initial batch (5 tracks) for instant playback
+        /// Optimized for quick load (under 35KB). Includes adaptive buffering configuration.
+        /// Frontend requests more tracks as needed for infinite playback.
         /// </summary>
         [HttpGet("playlist/{userId}")]
-        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 100)
+        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 5)
         {
             var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
             var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
 
-            // Generate M3U8 playlist with all tracks as sequential segments
-            var m3u8 = "#EXTM3U\n";
-            m3u8 += "#EXT-X-VERSION:3\n";
-            m3u8 += "#EXT-X-TARGETDURATION:600\n"; // Max 10 minutes per track
-            m3u8 += "#EXT-X-PLAYLIST-TYPE:VOD\n"; // Video On Demand (static playlist)
-
-            foreach (var track in playlist)
+            var tracks = playlist.Select(track => 
             {
-                var duration = track.DurationSeconds ?? 180; // Default 3 minutes
-                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromHours(2)) ?? string.Empty; // Extended for continuous playback
+                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromHours(24)) ?? string.Empty;
                 var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
-                var streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}";
+                
+                return new
+                {
+                    id = track.Id,
+                    title = track.Title,
+                    artist = track.Artist,
+                    s3Key = track.S3Key,
+                    genre = track.Genre,
+                    duration = track.DurationSeconds,
+                    url = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}"
+                };
+            }).ToList();
 
-                m3u8 += $"#EXTINF:{duration},{track.Artist} - {track.Title}\n";
-                m3u8 += $"{streamUrl}\n";
-            }
-
-            // Note: Removed #EXT-X-ENDLIST for continuous playback
-            // Frontend should request /api/oap/playlist-metadata/{userId}?count=100 for more tracks when queue runs low
-
-            return Content(m3u8, "application/vnd.apple.mpegurl");
+            return Ok(new
+            {
+                oap = activePersona.Name,
+                tracks,
+                hasMore = true,
+                nextUrl = $"{Request.Scheme}://{Request.Host}/api/oap/playlist/{userId}?count=20",
+                bufferConfig = new
+                {
+                    // Adaptive buffering for smooth playback on all network conditions
+                    minBufferSeconds = 3,      // Start playing after 3 seconds buffered (fast start)
+                    maxBufferSeconds = 30,     // Buffer up to 30 seconds ahead (handles network drops)
+                    prefetchTracks = 2,        // Prefetch next 2 tracks in background
+                    resumeBufferSeconds = 5    // Resume playback after 5 seconds when paused/reconnected
+                }
+            });
         }
 
         /// <summary>
-        /// [Spotify-like] Get playlist metadata without URLs - for frontend queue display
-        /// Frontend can request URLs on-demand when needed
+        /// Get more tracks for queue - lightweight metadata only, request URLs via /track-url when needed
         /// </summary>
         [HttpGet("playlist-metadata/{userId}")]
-        public async Task<IActionResult> GetPlaylistMetadata(string userId, [FromQuery] int count = 100)
+        public async Task<IActionResult> GetPlaylistMetadata(string userId, [FromQuery] int count = 20)
         {
             var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
@@ -445,12 +456,13 @@ namespace MusicAI.Orchestrator.Controllers
             
             List<MusicTrack> allMusic = new List<MusicTrack>();
             
-            // Try database first (if available)
+            // Try database first (if available) - fetch 2x requested count for shuffle variety
             if (_musicRepo != null)
             {
                 try
                 {
-                    allMusic = await _musicRepo.GetAllAsync(0, 200);
+                    // Only fetch what we need (2x for shuffle variety) instead of entire library
+                    allMusic = await _musicRepo.GetAllAsync(0, count * 2);
                 }
                 catch (Exception ex)
                 {
@@ -458,18 +470,20 @@ namespace MusicAI.Orchestrator.Controllers
                 }
             }
 
-            // Fallback: List all music from S3 bucket if database is empty
+            // Fallback: List music from S3 bucket if database is empty (limit to avoid loading thousands)
             if (!allMusic.Any() && _s3Service != null)
             {
                 try
                 {
-                    _logger.LogInformation("Fetching music files directly from S3 bucket");
+                    _logger.LogInformation("Fetching music files directly from S3 bucket (limited fetch)");
                     var s3Files = await _s3Service.ListObjectsAsync("music/");
                     
+                    // Take only what we need (2x count) for fast response
                     allMusic = s3Files
                         .Where(key => key.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) || 
                                      key.EndsWith(".m4a", StringComparison.OrdinalIgnoreCase) ||
                                      key.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+                        .Take(count * 2) // Limit S3 results for fast loading
                         .Select(key => new MusicTrack
                         {
                             Id = Guid.NewGuid().ToString(),
