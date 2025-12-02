@@ -85,55 +85,104 @@ namespace MusicAI.Orchestrator.Controllers
             // Generate conversational response based on OAP personality
             var responseText = GenerateOapResponse(oap, request.Message, analysis);
 
+            // Determine requested playlist size (support returning entire library when All==true)
+            var requestedCount = request.All ? 0 : Math.Max(1, request.Count);
+
             // Get music recommendations based on OAP personality and user mood
-            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, request.UserId);
+            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, request.UserId, requestedCount);
 
             // Convert to HLS streaming URLs (public endpoints, no auth required)
+            // Use long-lived tokens for HLS so the frontend can prefetch and buffer across sessions.
             var playlistWithUrls = playlist.Select(track =>
             {
-                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromMinutes(2)) ?? string.Empty;
+                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromHours(24)) ?? string.Empty;
                 var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
                 return new MusicTrackDto
                 {
                     Id = track.Id,
                     Title = track.Title,
-                    Artist = track.Artist,
+                    Artist = request.Light ? string.Empty : track.Artist,
                     S3Key = track.S3Key,
                     HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}{encoded}",
-                    StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}",
+                    // Do not provide progressive stream URLs by default — frontend should use HLS variants only.
+                    StreamUrl = string.Empty,
                     Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
                     Genre = track.Genre
                 };
             }).ToList();
 
-            return Ok(new OapChatResponse
+            // If PlayNowS3Key is provided, ensure that track is first and set CurrentAudioUrl accordingly
+            string? currentAudio = playlistWithUrls.FirstOrDefault()?.HlsUrl;
+            if (!string.IsNullOrEmpty(request.PlayNowS3Key))
+            {
+                var found = playlistWithUrls.FirstOrDefault(t => string.Equals(t.S3Key, request.PlayNowS3Key, StringComparison.OrdinalIgnoreCase));
+                if (found != null)
+                {
+                    // Move to front
+                    playlistWithUrls.Remove(found);
+                    playlistWithUrls.Insert(0, found);
+                    currentAudio = found.HlsUrl;
+                }
+                else
+                {
+                    // Not present in generated playlist: create a lightweight DTO for the requested S3 key
+                    var token = _tokenService?.GenerateToken(request.PlayNowS3Key, TimeSpan.FromHours(24)) ?? string.Empty;
+                    var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                    var title = System.IO.Path.GetFileNameWithoutExtension(request.PlayNowS3Key.Split('/').Last());
+                    var playNowDto = new MusicTrackDto
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Title = title,
+                        Artist = string.Empty,
+                        S3Key = request.PlayNowS3Key,
+                        HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{request.PlayNowS3Key}{encoded}",
+                        StreamUrl = string.Empty,
+                        Genre = null,
+                        Duration = null
+                    };
+
+                    playlistWithUrls.Insert(0, playNowDto);
+                    currentAudio = playNowDto.HlsUrl;
+                }
+            }
+
+            var responseObj = new OapChatResponse
             {
                 OapName = oap.Name,
                 OapPersonality = oap.Personality,
-                ResponseText = responseText,
+                ResponseText = request.EnableChat ? responseText : string.Empty,
                 MusicPlaylist = playlistWithUrls,
-                CurrentAudioUrl = playlistWithUrls.FirstOrDefault()?.HlsUrl,
+                CurrentAudioUrl = currentAudio,
                 DetectedMood = analysis.Mood,
                 DetectedIntent = analysis.Intent,
-                IsNewsSegment = false
-            });
+                IsNewsSegment = false,
+                BufferConfig = new BufferConfigDto
+                {
+                    MinBufferSeconds = 3,
+                    MaxBufferSeconds = 30,
+                    PrefetchTracks = 2,
+                    ResumeBufferSeconds = 5
+                }
+            };
+
+            return Ok(responseObj);
         }
 
         /// <summary>
         /// Get next tracks for auto-play based on current OAP and user preferences
         /// </summary>
         [HttpGet("next-tracks/{userId}")]
-        public async Task<IActionResult> GetNextTracks(string userId, [FromQuery] string? currentTrackId = null, [FromQuery] int count = 5)
+        public async Task<IActionResult> GetNextTracks(string userId, [FromQuery] string? currentTrackId = null, [FromQuery] int count = 5, [FromQuery] int offset = 0)
         {
             // Get currently active OAP
             var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
             
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
-            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
+            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count, offset);
 
             var tracks = playlist.Select(track =>
             {
-                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromMinutes(2)) ?? string.Empty;
+                var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromHours(24)) ?? string.Empty;
                 var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
                 return new MusicTrackDto
                 {
@@ -142,7 +191,7 @@ namespace MusicAI.Orchestrator.Controllers
                     Artist = track.Artist,
                     S3Key = track.S3Key,
                     HlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}{encoded}",
-                    StreamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{track.S3Key}{encoded}",
+                    StreamUrl = string.Empty,
                     Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
                     Genre = track.Genre
                 };
@@ -157,17 +206,34 @@ namespace MusicAI.Orchestrator.Controllers
         /// Frontend requests more tracks as needed for infinite playback.
         /// </summary>
         [HttpGet("playlist/{userId}")]
-        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 5)
+        public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 5, [FromQuery] bool light = false, [FromQuery] int offset = 0)
         {
             var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
-            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
-
-            var tracks = playlist.Select(track => 
+            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count, offset);
+            // Token TTL and returned fields differ slightly in light mode to minimize payload.
+            var tracks = playlist.Select(track =>
             {
                 var token = _tokenService?.GenerateToken(track.S3Key, TimeSpan.FromHours(24)) ?? string.Empty;
                 var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
-                
+
+                if (light)
+                {
+                    // Minimal fields for fastest startup (smaller JSON)
+                    // Include `artist` as empty string so anonymous types match between branches
+                    return new
+                    {
+                        id = track.Id,
+                        title = track.Title,
+                        artist = string.Empty,
+                        s3Key = track.S3Key,
+                        genre = track.Genre,
+                        duration = track.DurationSeconds,
+                        hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{track.S3Key}{encoded}"
+                    };
+                }
+
+                // Default (non-light) includes artist + more metadata
                 return new
                 {
                     id = track.Id,
@@ -180,12 +246,12 @@ namespace MusicAI.Orchestrator.Controllers
                 };
             }).ToList();
 
-            return Ok(new
+            var response = new
             {
                 oap = activePersona.Name,
                 tracks,
                 hasMore = true,
-                nextUrl = $"{Request.Scheme}://{Request.Host}/api/oap/playlist/{userId}?count=20",
+                nextUrl = $"{Request.Scheme}://{Request.Host}/api/oap/playlist/{userId}?count={count}&offset={offset + count}&light={light.ToString().ToLower()}",
                 bufferConfig = new
                 {
                     // Adaptive buffering for smooth playback on all network conditions
@@ -194,18 +260,20 @@ namespace MusicAI.Orchestrator.Controllers
                     prefetchTracks = 2,        // Prefetch next 2 tracks in background
                     resumeBufferSeconds = 5    // Resume playback after 5 seconds when paused/reconnected
                 }
-            });
+            };
+
+            return Ok(response);
         }
 
         /// <summary>
         /// Get more tracks for queue - lightweight metadata only, request URLs via /track-url when needed
         /// </summary>
         [HttpGet("playlist-metadata/{userId}")]
-        public async Task<IActionResult> GetPlaylistMetadata(string userId, [FromQuery] int count = 20)
+        public async Task<IActionResult> GetPlaylistMetadata(string userId, [FromQuery] int count = 20, [FromQuery] int offset = 0)
         {
             var activePersona = _personas.FirstOrDefault(p => p.IsActiveNow()) ?? _personas.First();
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
-            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count);
+            var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count, offset);
 
             var metadata = playlist.Select(track => new
             {
@@ -452,7 +520,7 @@ namespace MusicAI.Orchestrator.Controllers
             };
         }
 
-        private async Task<List<MusicTrack>> GetPersonalizedPlaylist(string oapId, string mood, string intent, string userId, int count = 10)
+        private async Task<List<MusicTrack>> GetPersonalizedPlaylist(string oapId, string mood, string intent, string userId, int count = 10, int offset = 0)
         {
             var oap = GetOapContext(oapId);
             
@@ -464,7 +532,8 @@ namespace MusicAI.Orchestrator.Controllers
                 try
                 {
                     // Only fetch what we need (2x for shuffle variety) instead of entire library
-                    allMusic = await _musicRepo.GetAllAsync(0, count * 2);
+                    // Use offset for pagination when available
+                    allMusic = await _musicRepo.GetAllAsync(offset, count * 2);
                 }
                 catch (Exception ex)
                 {
@@ -481,23 +550,30 @@ namespace MusicAI.Orchestrator.Controllers
                     var s3Files = await _s3Service.ListObjectsAsync("music/");
                     
                     // Take only what we need (2x count) for fast response
-                    allMusic = s3Files
-                        .Where(key => key.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) || 
-                                     key.EndsWith(".m4a", StringComparison.OrdinalIgnoreCase) ||
-                                     key.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
-                        .Take(count * 2) // Limit S3 results for fast loading
-                        .Select(key => new MusicTrack
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            Title = Path.GetFileNameWithoutExtension(key.Split('/').Last()),
-                            Artist = "Unknown",
-                            Genre = ExtractGenreFromS3Key(key),
-                            S3Key = key,
-                            S3Bucket = "tingoradiobucket",
-                            ContentType = "audio/mpeg",
-                            IsActive = true
-                        })
-                        .ToList();
+                        var candidates = s3Files
+                            .Where(key => key.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ||
+                                         key.EndsWith(".m4a", StringComparison.OrdinalIgnoreCase) ||
+                                         key.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+                            .Skip(Math.Max(0, offset))
+                            .ToList();
+
+                        // If count is positive we limit to count*2 for speed, otherwise return full listing
+                        var takeCount = count > 0 ? Math.Min(count * 2, candidates.Count) : candidates.Count;
+
+                        allMusic = candidates
+                            .Take(takeCount)
+                            .Select(key => new MusicTrack
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                Title = Path.GetFileNameWithoutExtension(key.Split('/').Last()),
+                                Artist = "Unknown",
+                                Genre = ExtractGenreFromS3Key(key),
+                                S3Key = key,
+                                S3Bucket = "tingoradiobucket",
+                                ContentType = "audio/mpeg",
+                                IsActive = true
+                            })
+                            .ToList();
                     
                     _logger.LogInformation("Loaded {Count} tracks from S3", allMusic.Count);
                 }
@@ -518,10 +594,10 @@ namespace MusicAI.Orchestrator.Controllers
             // Auto-shuffle Spotify-style playlist with ALL available tracks
             if (oapId.ToLowerInvariant() == "roman")
             {
-                var romanPlaylist = allMusic
-                    .OrderBy(_ => Guid.NewGuid())
-                    .Take(count)
-                    .ToList();
+                var shuffled = allMusic.OrderBy(_ => Guid.NewGuid()).ToList();
+
+                // If count <= 0 return entire shuffled library; otherwise take requested count (apply offset)
+                var romanPlaylist = (count <= 0) ? shuffled : shuffled.Skip(Math.Max(0, offset)).Take(count).ToList();
 
                 _logger.LogInformation("Roman generated full-library playlist: {Count} tracks from ALL folders", romanPlaylist.Count);
                 return romanPlaylist;
@@ -552,9 +628,10 @@ namespace MusicAI.Orchestrator.Controllers
                 filtered.AddRange(additional);
             }
 
-            // Shuffle and take requested count
+            // Shuffle, apply offset and take requested count
             var playlist = filtered
                 .OrderBy(_ => Guid.NewGuid())
+                .Skip(Math.Max(0, offset))
                 .Take(count)
                 .ToList();
 
@@ -585,6 +662,13 @@ namespace MusicAI.Orchestrator.Controllers
             public string UserId { get; set; } = string.Empty;
             public string Message { get; set; } = string.Empty;
             public string? Language { get; set; } = "en";
+            // Optional controls for playlist behavior
+            public int Count { get; set; } = 5;
+            public bool Light { get; set; } = false; // minimal payload
+            public bool All { get; set; } = false; // return entire library (use with caution)
+            public string? PlayNowS3Key { get; set; } = null; // immediate track to play
+            public bool EnableChat { get; set; } = true; // whether to include conversational response
+            public int Offset { get; set; } = 0; // pagination offset
         }
 
         public class OapChatResponse
@@ -594,6 +678,8 @@ namespace MusicAI.Orchestrator.Controllers
             public string ResponseText { get; set; } = string.Empty;
             public List<MusicTrackDto> MusicPlaylist { get; set; } = new();
             public string? CurrentAudioUrl { get; set; }
+            public BufferConfigDto? BufferConfig { get; set; }
+            public string? NextUrl { get; set; }
             public string? DetectedMood { get; set; }
             public string? DetectedIntent { get; set; }
             public bool IsNewsSegment { get; set; }
@@ -609,6 +695,14 @@ namespace MusicAI.Orchestrator.Controllers
             public string StreamUrl { get; set; } = string.Empty;
             public string? Duration { get; set; }
             public string? Genre { get; set; }
+        }
+
+        public class BufferConfigDto
+        {
+            public int MinBufferSeconds { get; set; }
+            public int MaxBufferSeconds { get; set; }
+            public int PrefetchTracks { get; set; }
+            public int ResumeBufferSeconds { get; set; }
         }
 
         private class MessageAnalysis

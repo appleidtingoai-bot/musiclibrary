@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.ResponseCompression;
 using MusicAI.Common.Models;
 using MusicAI.Infrastructure.Services;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -118,6 +120,18 @@ builder.Services.AddCors(options =>
               .SetPreflightMaxAge(TimeSpan.FromMinutes(10)); // Cache preflight for 10 minutes
     });
 });
+
+// Response compression (Brotli + Gzip) to minimize JSON payloads for initial playlist
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[] { "application/json" });
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+
+builder.Services.Configure<BrotliCompressionProviderOptions>(opts => opts.Level = CompressionLevel.Fastest);
+builder.Services.Configure<GzipCompressionProviderOptions>(opts => opts.Level = CompressionLevel.Fastest);
 
 // Stream token service for issuing short-lived stream tokens
 builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IStreamTokenService, MusicAI.Orchestrator.Services.StreamTokenService>();
@@ -463,6 +477,9 @@ var forwardedOptions = new ForwardedHeadersOptions
 forwardedOptions.KnownNetworks.Clear();
 forwardedOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedOptions);
+// Apply response compression before other middleware that writes responses
+app.UseResponseCompression();
+
 // Apply CORS policy
 app.UseCors("DefaultCors");
 
