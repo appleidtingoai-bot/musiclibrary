@@ -515,13 +515,34 @@ try
 }
 catch (Exception ex)
 {
-    var logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("Fatal");
-    logger.LogCritical(ex, "FATAL: Application crashed during runtime");
-    System.Console.WriteLine($"FATAL ERROR: {ex.GetType().Name}: {ex.Message}");
-    System.Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+    // During a startup failure (for example: address already in use), the
+    // service provider may be disposed which makes calls to
+    // app.Services.GetRequiredService(...) throw ObjectDisposedException.
+    // Avoid touching app.Services here — log to the console and exit with
+    // non-zero code so the process ends cleanly and systemd can record the
+    // cause without causing a secondary exception.
+    try
+    {
+        var loggerFactory = app?.Services?.GetService<Microsoft.Extensions.Logging.ILoggerFactory>();
+        if (loggerFactory != null)
+        {
+            loggerFactory.CreateLogger("Fatal").LogCritical(ex, "FATAL: Application crashed during runtime");
+        }
+    }
+    catch
+    {
+        // Ignore - app.Services may be disposed. Fall back to Console.
+    }
+
+    System.Console.Error.WriteLine($"FATAL ERROR: {ex.GetType().Name}: {ex.Message}");
+    System.Console.Error.WriteLine(ex.StackTrace);
     if (ex.InnerException != null)
     {
-        System.Console.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+        System.Console.Error.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+        System.Console.Error.WriteLine(ex.InnerException.StackTrace);
     }
-    throw;
+
+    // Exit with a non-zero code so systemd treats this as a clean failure
+    // and doesn't produce additional ObjectDisposedException noise.
+    Environment.Exit(1);
 }
