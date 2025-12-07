@@ -107,7 +107,7 @@ namespace MusicAI.Orchestrator.Services
                 var selected = qualities.FirstOrDefault(q => q.Quality == quality) 
                             ?? qualities.First(); // Fallback to first available
 
-                var token = _tokenService.GenerateToken(selected.S3Key, ttl);
+                var token = _tokenService.GenerateToken(selected.S3Key ?? string.Empty, ttl, false);
                 return $"{selected.S3Key}?t={System.Net.WebUtility.UrlEncode(token)}";
             }
             catch (Exception ex)

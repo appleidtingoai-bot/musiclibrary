@@ -81,7 +81,7 @@ public class OnboardingController : ControllerBase
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Lax,
+            SameSite = SameSiteMode.None,
             Expires = expires
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
@@ -103,7 +103,7 @@ public class OnboardingController : ControllerBase
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Lax,
+            SameSite = SameSiteMode.None,
             Expires = expires
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
@@ -202,7 +202,7 @@ public class OnboardingController : ControllerBase
                 {
                     HttpOnly = true,
                     Secure = Request.IsHttps,
-                    SameSite = SameSiteMode.Lax,
+                    SameSite = SameSiteMode.None,
                     Expires = expires
                 };
                 Response.Cookies.Append("MusicAI.Auth", newToken, cookieOptions);
@@ -278,7 +278,7 @@ public class OnboardingController : ControllerBase
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Lax,
+            SameSite = SameSiteMode.None,
             Expires = expires
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);

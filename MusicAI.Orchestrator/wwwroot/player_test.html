@@ -1,0 +1,332 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>MusicAI Player Test</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
+    textarea { width: 100%; height: 180px; }
+    pre { background:#f6f6f6; padding:10px; overflow:auto; }
+    .controls button { margin-right:8px; }
+  </style>
+</head>
+<body>
+  <h2>MusicAI Single-Call Player Test</h2>
+
+  <label>UserId: <input id="userId" value="cb09e08e-ba3f-4bd5-b446-0a7e6551aee3" style="width:420px" /></label>
+  <button id="fetchBtn">Fetch Manifest Payload</button>
+
+  <h3>Controls</h3>
+  <div class="controls">
+    <button id="playBtn">Play</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="skipBtn">Skip</button>
+    <button id="prevBtn">Previous</button>
+    <button id="wsConnect">Open WS</button>
+  </div>
+
+  <h3>Player</h3>
+  <audio id="audio" controls style="width:100%" crossorigin="anonymous"></audio>
+  <div id="playerInfo" style="margin-top:8px;font-size:0.95em;color:#333"></div>
+  <audio id="prefetchAudio" style="display:none" preload="none"></audio>
+
+  <h3>Returned Manifest (continuousManifest)</h3>
+  <pre id="manifestPre">(not fetched)</pre>
+
+  <h3>Realtime State (from WS)</h3>
+  <pre id="statePre">(no connection)</pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const fetchBtn = document.getElementById('fetchBtn');
+    const userIdInput = document.getElementById('userId');
+    const manifestPre = document.getElementById('manifestPre');
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const wsConnect = document.getElementById('wsConnect');
+    const statePre = document.getElementById('statePre');
+
+    let currentBlobUrl = null;
+    let ws = null;
+
+    async function fetchPayload() {
+      const uid = userIdInput.value.trim();
+      const resp = await fetch(`/api/oap/playlist/${encodeURIComponent(uid)}?count=10&manifestOnly=true`);
+      if (!resp.ok) {
+        manifestPre.textContent = `HTTP ${resp.status} ${resp.statusText}`;
+        return;
+      }
+      const j = await resp.json();
+      manifestPre.textContent = j.continuousManifest || '(no manifest)';
+
+      // Create blob URL and feed to hls.js OR fallback to sequential MP3 playback
+      const manifestText = j.continuousManifest || '';
+      manifestPre.textContent = manifestText || '(no manifest)';
+
+      // detect if manifest contains segment/variant references (HLS) or simple mp3/wav list
+      const lower = manifestText.toLowerCase();
+      const hasHls = lower.includes('#extm3u') && (lower.includes('.m3u8') || lower.includes('#extinf'));
+
+      if (hasHls && Hls.isSupported() && lower.includes('.m3u8')) {
+        if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+        const blob = new Blob([manifestText], { type: 'application/vnd.apple.mpegurl' });
+        currentBlobUrl = URL.createObjectURL(blob);
+        if (window._hls) { try { window._hls.destroy(); } catch {} }
+        const hls = new Hls();
+        window._hls = hls;
+        hls.loadSource(currentBlobUrl);
+        hls.attachMedia(audio);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => console.log('manifest parsed'));
+        return;
+      }
+
+      // Fallback: parse simple EXTINF manifest with direct mp3/wav URLs or plain newline-separated URLs
+      const urls = [];
+      const lines = manifestText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length>0);
+      for (let i=0;i<lines.length;i++){
+        const L = lines[i];
+        if (L.startsWith('#EXTINF')) {
+          // next non-comment line expected to be URL
+          let jidx = i+1; while (jidx < lines.length && lines[jidx].startsWith('#')) jidx++;
+          if (jidx < lines.length) { const candidate = lines[jidx]; if (candidate.match(/\.(mp3|wav|m4a)(\?|$)/i) || candidate.startsWith('http')) urls.push(candidate); }
+        } else if (!L.startsWith('#')) {
+          if (L.match(/\.(mp3|wav|m4a)(\?|$)/i) || L.startsWith('http')) urls.push(L);
+        }
+      }
+
+      if (urls.length === 0) {
+        // Attempt to find URLs directly in JSON (continuousHlsUrl or firstTrack)
+        if (j.continuousHlsUrl) {
+          audio.src = j.continuousHlsUrl;
+        }
+        return;
+      }
+
+      // Resolve S3 object URLs to presigned URLs by calling the backend /api/oap/track-url
+      async function resolveUrls(rawUrls) {
+        const resolved = [];
+        for (const u of rawUrls) {
+          try {
+            // Try to extract s3Key from common S3 URL formats
+            // e.g. https://{bucket}.s3.{region}.amazonaws.com/<key>
+            // or https://s3.amazonaws.com/{bucket}/{key}
+            let s3Key = null;
+            try {
+              const parsed = new URL(u);
+              const host = parsed.hostname;
+              const pathname = parsed.pathname.replace(/^\//, '');
+              // bucket form
+              const bucketMatch = host.match(/^([^.]+)\.s3[.-]/);
+              if (bucketMatch) {
+                s3Key = pathname; // everything after bucket host is key
+              } else if (host === 's3.amazonaws.com') {
+                const parts = pathname.split('/');
+                if (parts.length > 1) s3Key = parts.slice(1).join('/');
+              }
+            } catch (e) { s3Key = null; }
+
+            if (s3Key) {
+              // Use same-origin stream proxy to avoid CORS issues
+              const proxy = `/api/oap/stream-proxy?s3Key=${encodeURIComponent(s3Key)}`;
+              resolved.push(proxy);
+              continue;
+            }
+          } catch (ex) {
+            console.warn('resolve failed for', u, ex);
+          }
+          // fallback to original URL if presign failed
+          resolved.push(u);
+        }
+        return resolved;
+      }
+
+      // Play using WebAudio: pre-decode upcoming tracks and schedule them
+      window._playlist = await resolveUrls(urls);
+      window._currentIndex = 0;
+      const playerInfo = document.getElementById('playerInfo');
+
+      function renderPlaylist() {
+        playerInfo.innerHTML = '<b>Resolved Playlist</b><br/>' + window._playlist.map((u,i)=>`<div style="margin:4px 0"><a href="#" data-idx="${i}">[${i}]</a> ${u}</div>`).join('');
+        playerInfo.querySelectorAll('a[data-idx]').forEach(a=>a.addEventListener('click', (ev)=>{ ev.preventDefault(); webAudioPlayIndex(parseInt(a.getAttribute('data-idx'))); }));
+      }
+      renderPlaylist();
+
+      // Setup WebAudio
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      const gainNode = audioCtx.createGain();
+      gainNode.connect(audioCtx.destination);
+      gainNode.gain.value = 1.0;
+
+      const decodedBuffers = {}; // url -> AudioBuffer
+      const preloadAhead = 2; // how many tracks to predecode ahead
+      let currentSource = null;
+      let playbackStartAt = 0; // audioCtx.currentTime when currentSource was started
+      let playbackIndex = -1;
+
+      async function fetchAndDecode(url) {
+        if (decodedBuffers[url]) return decodedBuffers[url];
+        try {
+          const res = await fetch(url);
+          const ab = await res.arrayBuffer();
+          const buf = await audioCtx.decodeAudioData(ab.slice(0));
+          decodedBuffers[url] = buf;
+          return buf;
+        } catch (e) {
+          console.warn('decode failed for', url, e);
+          return null;
+        }
+      }
+
+      // Preload a range of tracks
+      function preloadRange(startIdx) {
+        for (let i = startIdx; i < Math.min(window._playlist.length, startIdx + preloadAhead + 1); i++) {
+          const url = window._playlist[i];
+          if (!decodedBuffers[url]) fetchAndDecode(url).catch(()=>{});
+        }
+      }
+
+      function stopCurrent() {
+        try {
+          if (currentSource) {
+            currentSource.onended = null;
+            currentSource.stop(0);
+            currentSource.disconnect();
+            currentSource = null;
+          }
+        } catch (e) { console.warn('stopCurrent failed', e); }
+      }
+
+      async function webAudioPlayIndex(idx) {
+        if (idx < 0 || idx >= window._playlist.length) return;
+        // ensure user gesture resumed audio context
+        try { await audioCtx.resume(); } catch(e){}
+        playbackIndex = idx;
+        const url = window._playlist[idx];
+        // show on UI
+        playerInfo.querySelectorAll('div').forEach(d=>d.style.opacity=1);
+        const srcNode = document.createElement('div'); srcNode.style.marginTop='6px'; srcNode.textContent = 'Playing (WebAudio): ' + url; playerInfo.appendChild(srcNode);
+
+        // Stop currently playing
+        stopCurrent();
+
+        const buf = decodedBuffers[url] || await fetchAndDecode(url);
+        if (!buf) {
+          // fallback to audio element if decoding failed
+          audio.preload = 'auto'; audio.src = url; try { audio.play(); } catch(e){}
+          return;
+        }
+
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(gainNode);
+        currentSource = src;
+        playbackStartAt = audioCtx.currentTime;
+        src.onended = () => {
+          // schedule next track immediately
+          const next = playbackIndex + 1;
+          if (next < window._playlist.length) {
+            webAudioPlayIndex(next);
+          } else {
+            console.log('Playlist ended');
+          }
+        };
+        src.start();
+
+        // Preload upcoming tracks
+        preloadRange(idx + 1);
+      }
+
+      // start preloading first few tracks
+      preloadRange(0);
+
+      // Start playing from first (user gesture required)
+      webAudioPlayIndex(0);
+
+      // Hook audio element events for UI compatibility (won't be used for playback when WebAudio active)
+      audio.onplay = () => {
+        const state = { isPlaying: true, currentIndex: playbackIndex || 0, volume: gainNode.gain.value, queue: window._playlist || [] };
+        statePre.textContent = JSON.stringify(state, null, 2);
+      };
+      audio.onpause = () => {
+        const state = { isPlaying: false, currentIndex: playbackIndex || 0, volume: gainNode.gain.value, queue: window._playlist || [] };
+        statePre.textContent = JSON.stringify(state, null, 2);
+      };
+    }
+
+    fetchBtn.addEventListener('click', () => fetchPayload());
+
+    async function callControl(path, method='POST', body=null) {
+      const uid = userIdInput.value.trim();
+      const url = `/api/oap/control/${encodeURIComponent(uid)}/${path}`;
+      const opts = { method, headers: {} };
+      if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const r = await fetch(url, opts);
+      if (r.ok) {
+        const j = await r.json();
+        console.log('control response', j);
+        statePre.textContent = JSON.stringify(j, null, 2);
+      } else {
+        console.warn('control failed', r.status);
+      }
+    }
+
+    playBtn.onclick = async () => {
+      try {
+        if (!window._playlist || window._playlist.length === 0) {
+          await fetchPayload();
+        }
+        if (typeof window._currentIndex !== 'number') window._currentIndex = 0;
+        playIndex(window._currentIndex);
+      } catch (e) { console.warn('play click failed', e); }
+      callControl('play').catch(()=>{});
+    };
+
+    pauseBtn.onclick = () => {
+      try { audio.pause(); } catch(e) { console.warn(e); }
+      callControl('pause').catch(()=>{});
+    };
+
+    skipBtn.onclick = () => {
+      try {
+        const next = (typeof window._currentIndex === 'number') ? window._currentIndex + 1 : 1;
+        if (window._playlist && next < window._playlist.length) playIndex(next);
+        else console.log('No next track');
+      } catch(e) { console.warn(e); }
+      callControl('skip').catch(()=>{});
+    };
+
+    prevBtn.onclick = () => {
+      try {
+        const prev = (typeof window._currentIndex === 'number') ? window._currentIndex - 1 : 0;
+        if (window._playlist && prev >= 0) playIndex(prev);
+        else console.log('No previous track');
+      } catch(e) { console.warn(e); }
+      callControl('previous').catch(()=>{});
+    };
+
+    wsConnect.onclick = () => {
+      if (ws && ws.readyState === WebSocket.OPEN) { ws.close(); ws = null; wsConnect.textContent = 'Open WS'; statePre.textContent = '(no connection)'; return; }
+      const uid = userIdInput.value.trim();
+      ws = new WebSocket(`ws://${location.host}/api/oap/ws/${encodeURIComponent(uid)}`);
+      ws.onopen = () => { wsConnect.textContent = 'Close WS'; console.log('WS open'); };
+      ws.onmessage = e => { statePre.textContent = e.data; };
+      ws.onclose = () => { wsConnect.textContent = 'Open WS'; statePre.textContent = '(closed)'; };
+      ws.onerror = err => { console.error('ws error', err); };
+    };
+
+    // Update local UI state when audio plays/pauses
+    audio.onplay = () => {
+      const state = { isPlaying: true, currentIndex: window._currentIndex || 0, volume: audio.volume, queue: window._playlist || [] };
+      statePre.textContent = JSON.stringify(state, null, 2);
+    };
+    audio.onpause = () => {
+      const state = { isPlaying: false, currentIndex: window._currentIndex || 0, volume: audio.volume, queue: window._playlist || [] };
+      statePre.textContent = JSON.stringify(state, null, 2);
+    };
+  </script>
+</body>
+</html>

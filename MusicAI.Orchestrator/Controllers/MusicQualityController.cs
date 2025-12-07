@@ -24,6 +24,25 @@ namespace MusicAI.Orchestrator.Controllers
             _logger = logger;
         }
 
+        private bool IsCdnAvailable()
+        {
+            var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN");
+            return !string.IsNullOrEmpty(cdn) || MusicAI.Infrastructure.Services.CloudFrontCookieSigner.IsConfigured;
+        }
+
+        private string GetCdnOrOriginUrl(string s3Key)
+        {
+            if (string.IsNullOrEmpty(s3Key)) return string.Empty;
+            var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
+            if (!string.IsNullOrEmpty(cdn)) return $"https://{cdn}/{s3Key.TrimStart('/')}";
+            if (MusicAI.Infrastructure.Services.CloudFrontCookieSigner.IsConfigured)
+            {
+                var cf = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
+                if (!string.IsNullOrEmpty(cf)) return $"https://{cf}/{s3Key.TrimStart('/')}";
+            }
+            return $"{Request.Scheme}://{Request.Host}/api/music/hls/{Uri.EscapeDataString(s3Key)}";
+        }
+
         /// <summary>
         /// Get available quality versions for a track
         /// Returns list of bitrates: high (320kbps), medium (192kbps), low (128kbps), original
@@ -74,10 +93,23 @@ namespace MusicAI.Orchestrator.Controllers
             {
                 var qualityUrl = await _qualityService.GetQualityUrlAsync(s3Key, quality, TimeSpan.FromMinutes(ttlMinutes));
 
+                string hlsUrl;
+                string streamUrl;
+                try
+                {
+                    hlsUrl = GetCdnOrOriginUrl(qualityUrl);
+                    streamUrl = GetCdnOrOriginUrl(qualityUrl).Replace("/api/music/hls/", "/api/music/stream/");
+                }
+                catch
+                {
+                    hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{qualityUrl}";
+                    streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{qualityUrl}";
+                }
+
                 return Ok(new
                 {
-                    hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{qualityUrl}",
-                    streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{qualityUrl}",
+                    hlsUrl,
+                    streamUrl,
                     quality,
                     expiresIn = ttlMinutes * 60
                 });
@@ -114,10 +146,10 @@ namespace MusicAI.Orchestrator.Controllers
             var m3u8 = "#EXTM3U\n";
             m3u8 += "#EXT-X-VERSION:3\n";
 
-            foreach (var quality in qualities.OrderByDescending(q => q.Bitrate))
+                foreach (var quality in qualities.OrderByDescending(q => q.Bitrate))
             {
                 var token = await _qualityService.GetQualityUrlAsync(s3Key, quality.Quality, TimeSpan.FromMinutes(10));
-                var streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{token}";
+                var streamUrl = GetCdnOrOriginUrl(token);
 
                 // Add quality variant stream
                 m3u8 += $"#EXT-X-STREAM-INF:BANDWIDTH={quality.Bitrate * 1000},RESOLUTION=1x1\n";

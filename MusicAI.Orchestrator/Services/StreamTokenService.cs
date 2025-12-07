@@ -9,8 +9,8 @@ namespace MusicAI.Orchestrator.Services
 {
     public interface IStreamTokenService
     {
-        string GenerateToken(string s3Key, TimeSpan ttl);
-        bool ValidateToken(string token, out string s3Key);
+        string GenerateToken(string s3Key, TimeSpan ttl, bool allowExplicit = false);
+        bool ValidateToken(string token, out string s3Key, out bool allowExplicit);
     }
 
     public class StreamTokenService : IStreamTokenService
@@ -24,18 +24,22 @@ namespace MusicAI.Orchestrator.Services
             _signingKey = Encoding.UTF8.GetBytes(key);
         }
 
-        public string GenerateToken(string s3Key, TimeSpan ttl)
+        public string GenerateToken(string s3Key, TimeSpan ttl, bool allowExplicit = false)
         {
             var now = DateTime.UtcNow;
-            var claims = new[] { new Claim("s3", s3Key) };
+            var claims = new[] {
+                new Claim("s3", s3Key),
+                new Claim("allow_explicit", allowExplicit ? "1" : "0")
+            };
             var creds = new SigningCredentials(new SymmetricSecurityKey(_signingKey), SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(_issuer, _issuer, claims, notBefore: now, expires: now.Add(ttl), signingCredentials: creds);
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        public bool ValidateToken(string token, out string s3Key)
+        public bool ValidateToken(string token, out string s3Key, out bool allowExplicit)
         {
             s3Key = string.Empty;
+            allowExplicit = false;
             if (string.IsNullOrEmpty(token)) return false;
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -54,9 +58,16 @@ namespace MusicAI.Orchestrator.Services
             try
             {
                 var principal = tokenHandler.ValidateToken(token, validationParams, out var validatedToken);
-                var claim = principal.FindFirst("s3");
-                if (claim == null) return false;
-                s3Key = claim.Value;
+                var s3Claim = principal.FindFirst("s3");
+                if (s3Claim == null) return false;
+                s3Key = s3Claim.Value;
+
+                var explicitClaim = principal.FindFirst("allow_explicit");
+                if (explicitClaim != null && (explicitClaim.Value == "1" || explicitClaim.Value.Equals("true", StringComparison.OrdinalIgnoreCase)))
+                {
+                    allowExplicit = true;
+                }
+
                 return true;
             }
             catch

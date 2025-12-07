@@ -288,6 +288,9 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
+// Register in-memory player service for controls and quick testing
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IPlayerService, MusicAI.Orchestrator.Services.InMemoryPlayerService>();
+
 // Postgres users repository registration
 var pgConn = builder.Configuration.GetConnectionString("Default")
              ?? builder.Configuration["Postgres:ConnectionString"]
@@ -337,7 +340,15 @@ try
 
     if (!string.IsNullOrEmpty(s3Bucket))
     {
-        builder.Services.AddSingleton<MusicAI.Infrastructure.Services.IS3Service, MusicAI.Infrastructure.Services.S3Service>();
+        // Register S3Service and inject IDistributedCache if available for presign caching
+        builder.Services.AddSingleton<MusicAI.Infrastructure.Services.IS3Service>(sp =>
+        {
+            var cfg = sp.GetRequiredService<IConfiguration>();
+            var cache = sp.GetService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+            // Use ActivatorUtilities to create the S3Service so we don't assume a specific constructor signature.
+            var instance = ActivatorUtilities.CreateInstance(sp, typeof(MusicAI.Infrastructure.Services.S3Service), cfg);
+            return (MusicAI.Infrastructure.Services.IS3Service)instance;
+        });
         System.Console.WriteLine("AWS S3 configured. S3Service registered.");
     }
     else
@@ -434,6 +445,10 @@ builder.Services.AddSingleton<MusicAI.Orchestrator.Services.NewsReadingService>(
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MusicAI.Orchestrator.Services.NewsReadingService>());
 System.Console.WriteLine("News reading service registered - Tosin will read news every hour");
 
+// Background signer/assembler service and circuit breaker to protect heavy operations
+builder.Services.AddSingleton<MusicAI.Infrastructure.Services.SimpleCircuitBreaker>();
+builder.Services.AddHostedService<MusicAI.Orchestrator.Services.BackgroundSignerService>();
+
 // TosinAgent (Autonomous AI Agent)
 try
 {
@@ -482,6 +497,12 @@ app.UseResponseCompression();
 
 // Apply CORS policy
 app.UseCors("DefaultCors");
+
+// Enable WebSockets for real-time control sync
+app.UseWebSockets();
+
+// Serve static files from wwwroot (player_test.html)
+app.UseStaticFiles();
 
 // Development: ensure the app listens on both http and https for local testing
 if (app.Environment.IsDevelopment())

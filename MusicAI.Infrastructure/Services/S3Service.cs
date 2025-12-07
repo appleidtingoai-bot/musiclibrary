@@ -20,26 +20,24 @@ namespace MusicAI.Infrastructure.Services
     {
         private readonly IAmazonS3 _s3;
         private readonly string _bucket;
+        private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache? _cache;
 
-        public S3Service(IConfiguration cfg)
+        public S3Service(IConfiguration cfg, Microsoft.Extensions.Caching.Distributed.IDistributedCache? cache = null)
         {
-                var accessKey = cfg["AWS:AccessKey"] ?? Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
-                var secretKey = cfg["AWS:SecretKey"] ?? Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
-                var region = cfg["AWS:Region"] ?? Environment.GetEnvironmentVariable("AWS_REGION");
-                _bucket = cfg["AWS:S3Bucket"] ?? Environment.GetEnvironmentVariable("AWS_S3_BUCKET");
+            _cache = cache;
+                var accessKey = (cfg["AWS:AccessKey"] ?? Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID"))?.Trim();
+                var secretKey = (cfg["AWS:SecretKey"] ?? Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY"))?.Trim();
+                var region = (cfg["AWS:Region"] ?? Environment.GetEnvironmentVariable("AWS_REGION"))?.Trim();
+                _bucket = (cfg["AWS:S3Bucket"] ?? Environment.GetEnvironmentVariable("AWS_S3_BUCKET"))?.Trim();
 
-                // S3 Access Point alias (if provided, use as bucket name)
-                var accessPointAlias = cfg["AWS:S3Endpoint"] ?? Environment.GetEnvironmentVariable("AWS_S3_ENDPOINT");
-                
-                // If access point alias is provided, use it as the bucket name
-                if (!string.IsNullOrEmpty(accessPointAlias) && !accessPointAlias.StartsWith("http"))
-                {
-                    _bucket = accessPointAlias;
-                }
+                // S3 Access Point alias or custom endpoint
+                var accessPointAlias = (cfg["AWS:S3Endpoint"] ?? Environment.GetEnvironmentVariable("AWS_S3_ENDPOINT"))?.Trim();
 
+                // Basic validation and trimming
                 if (string.IsNullOrWhiteSpace(_bucket))
                 {
-                    throw new InvalidOperationException("S3 bucket not configured. Set 'AWS:S3Bucket' or environment variable 'AWS_S3_BUCKET'.");
+                    // Do not throw here yet if accessPointAlias is an access point ARN/alias - we'll validate below
+                    _bucket = null;
                 }
 
                 if (string.IsNullOrWhiteSpace(region))
@@ -48,13 +46,41 @@ namespace MusicAI.Infrastructure.Services
                 }
 
                 var regionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region);
-                
-                // Configure S3 client with UseArnRegion for access point support
+
+                // Configure S3 client with defaults; we'll adjust if a custom endpoint/access point is provided
                 var s3Config = new AmazonS3Config
                 {
                     RegionEndpoint = regionEndpoint,
                     UseArnRegion = true // Required for S3 Access Points
                 };
+
+                // Decide how to treat accessPointAlias:
+                // - If it looks like an ARN (starts with "arn:") or contains "s3alias", treat as access-point/bucket name
+                // - If it looks like a URL or host (contains '.' or starts with http), treat as custom service endpoint (set ServiceURL and ForcePathStyle)
+                if (!string.IsNullOrEmpty(accessPointAlias))
+                {
+                    if (accessPointAlias.StartsWith("arn:", StringComparison.OrdinalIgnoreCase) || accessPointAlias.Contains("s3alias", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Use the alias/ARN as the bucket name for access-point usage
+                        _bucket = accessPointAlias;
+                    }
+                    else if (accessPointAlias.StartsWith("http", StringComparison.OrdinalIgnoreCase) || accessPointAlias.Contains('.'))
+                    {
+                        // Custom S3-compatible endpoint (e.g., MinIO or custom domain)
+                        s3Config.ServiceURL = accessPointAlias;
+                        s3Config.ForcePathStyle = true;
+                    }
+                    else
+                    {
+                        // Unknown form: if _bucket is empty, assume this is an access-point style alias and use it as bucket
+                        if (string.IsNullOrEmpty(_bucket)) _bucket = accessPointAlias;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(_bucket))
+                {
+                    throw new InvalidOperationException("S3 bucket not configured. Set 'AWS:S3Bucket' or environment variable 'AWS_S3_BUCKET', or provide a valid access point in 'AWS:S3Endpoint'.");
+                }
 
                 if (!string.IsNullOrWhiteSpace(accessKey) && !string.IsNullOrWhiteSpace(secretKey))
                 {
@@ -88,10 +114,29 @@ namespace MusicAI.Infrastructure.Services
             }
         }
 
-        public Task<string> GetPresignedUrlAsync(string key, TimeSpan expiry)
+        public async Task<string> GetPresignedUrlAsync(string key, TimeSpan expiry)
         {
             try
             {
+                // Try cache first when a distributed cache is available
+                if (_cache != null)
+                {
+                    var cacheKey = $"presign:{key}:{(int)expiry.TotalSeconds}";
+                    try
+                    {
+                        var cached = await _cache.GetAsync(cacheKey);
+                        if (cached != null && cached.Length > 0)
+                        {
+                            var cachedUrl = System.Text.Encoding.UTF8.GetString(cached);
+                            return cachedUrl;
+                        }
+                    }
+                    catch
+                    {
+                        // Cache read errors should not block presign generation
+                    }
+                }
+
                 var req = new GetPreSignedUrlRequest
                 {
                     BucketName = _bucket,
@@ -99,17 +144,40 @@ namespace MusicAI.Infrastructure.Services
                     Expires = DateTime.UtcNow.Add(expiry)
                 };
                 var url = _s3.GetPreSignedURL(req);
-                
+
                 // Validate URL before returning
                 if (string.IsNullOrEmpty(url) || !Uri.TryCreate(url, UriKind.Absolute, out _))
                 {
                     throw new Exception($"Generated presigned URL is invalid: {url}");
                 }
-                
-                return Task.FromResult(url);
+
+                // Store in cache if available - set TTL slightly shorter than expiry to avoid edge cases
+                if (_cache != null)
+                {
+                    var cacheKey = $"presign:{key}:{(int)expiry.TotalSeconds}";
+                    try
+                    {
+                        var bytes = System.Text.Encoding.UTF8.GetBytes(url);
+                        var options = new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions
+                        {
+                            AbsoluteExpirationRelativeToNow = expiry > TimeSpan.FromSeconds(10) ? expiry - TimeSpan.FromSeconds(10) : expiry
+                        };
+                        await _cache.SetAsync(cacheKey, bytes, options);
+                    }
+                    catch
+                    {
+                        // Ignore cache write failures
+                    }
+                }
+
+                return url;
             }
             catch (Exception ex)
             {
+                if (ex is AmazonS3Exception s3ex)
+                {
+                    throw new Exception($"Failed to generate presigned URL for key '{key}': {s3ex.StatusCode} {s3ex.ErrorCode} {s3ex.Message} (RequestId={s3ex.RequestId})", s3ex);
+                }
                 throw new Exception($"Failed to generate presigned URL for key '{key}': {ex.Message}", ex);
             }
         }
@@ -188,6 +256,10 @@ namespace MusicAI.Infrastructure.Services
             }
             catch (Exception ex)
             {
+                if (ex is AmazonS3Exception s3ex)
+                {
+                    throw new Exception($"S3 download failed for {s3Key} -> {localFilePath}: {s3ex.StatusCode} {s3ex.ErrorCode} {s3ex.Message} (RequestId={s3ex.RequestId})", s3ex);
+                }
                 throw new Exception($"S3 download failed for {s3Key} -> {localFilePath}: {ex.Message}", ex);
             }
         }
@@ -208,10 +280,16 @@ namespace MusicAI.Infrastructure.Services
             {
                 return false;
             }
-            catch (Exception)
+            catch (AmazonS3Exception ex)
             {
-                // Other errors mean we can't determine, so return false
-                return false;
+                // Log more details and rethrow so callers can decide how to handle transient errors
+                // For NotFound we already handled above; other statuses may indicate permission/region issues
+                throw new Exception($"S3 metadata check failed for {key}: {ex.StatusCode} {ex.ErrorCode} {ex.Message} (RequestId={ex.RequestId})", ex);
+            }
+            catch (Exception ex)
+            {
+                // Other errors mean we can't determine; surface them to caller with context
+                throw new Exception($"S3 metadata check failed for {key}: {ex.Message}", ex);
             }
         }
     }

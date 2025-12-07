@@ -22,9 +22,9 @@ namespace MusicAI.Orchestrator.Controllers
         private const long MaxFileSizeBytes = 52428800; // 50MB
         
         public MusicController(
-            MusicRepository? musicRepo,
             IS3Service? s3Service,
-            AdminsRepository adminsRepo)
+            AdminsRepository adminsRepo,
+            MusicRepository? musicRepo = null)
         {
             _musicRepo = musicRepo;
             _s3Service = s3Service;

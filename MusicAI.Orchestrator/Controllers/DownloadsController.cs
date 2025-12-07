@@ -54,7 +54,8 @@ namespace MusicAI.Orchestrator.Controllers
             }
 
             // Generate long-lived token (24 hours) for offline download
-            var token = _tokenService.GenerateToken(request.S3Key, TimeSpan.FromHours(24));
+            var allowExplicit = User?.FindFirst("allow_explicit")?.Value != null && (User.FindFirst("allow_explicit")!.Value == "1" || User.FindFirst("allow_explicit")!.Value.Equals("true", StringComparison.OrdinalIgnoreCase));
+            var token = _tokenService.GenerateToken(request.S3Key ?? string.Empty, TimeSpan.FromHours(24), allowExplicit);
             
             // Store download record
             var downloadId = Guid.NewGuid().ToString();

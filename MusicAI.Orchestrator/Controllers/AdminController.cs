@@ -1092,8 +1092,41 @@ public class AdminController : ControllerBase
                         }
                         
                         // Return PUBLIC streaming URLs (no auth required)
-                        var streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{key}";
-                        var hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{key}";
+                        string streamUrl;
+                        string hlsUrl;
+                        var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
+                        if (!string.IsNullOrEmpty(cdn))
+                        {
+                            hlsUrl = $"https://{cdn}/{key}";
+                            streamUrl = $"https://{cdn}/{key}";
+                        }
+                        else
+                        {
+                            streamUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{key}";
+                            try
+                            {
+                                if (MusicAI.Infrastructure.Services.CloudFrontCookieSigner.IsConfigured)
+                                {
+                                    var cfDomain = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
+                                    if (!string.IsNullOrEmpty(cfDomain))
+                                    {
+                                        hlsUrl = $"https://{cfDomain}/{key}";
+                                    }
+                                    else
+                                    {
+                                        hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{key}";
+                                    }
+                                }
+                                else
+                                {
+                                    hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{key}";
+                                }
+                            }
+                            catch
+                            {
+                                hlsUrl = $"{Request.Scheme}://{Request.Host}/api/music/hls/{key}";
+                            }
+                        }
                         
                         uploaded.Add(new
                         {

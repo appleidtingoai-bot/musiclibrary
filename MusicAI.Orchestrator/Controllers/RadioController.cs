@@ -22,11 +22,11 @@ namespace MusicAI.Orchestrator.Controllers
         private readonly UsersRepository _usersRepo;
 
         public RadioController(
-            MusicRepository? musicRepo,
             OapSchedulingService? oapService,
             IS3Service? s3Service,
             SubscriptionsRepository subscriptionsRepo,
-            UsersRepository usersRepo)
+            UsersRepository usersRepo,
+            MusicRepository? musicRepo = null)
         {
             _musicRepo = musicRepo;
             _oapService = oapService;

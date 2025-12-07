@@ -18,12 +18,14 @@ namespace MusicAI.Orchestrator.Controllers
         private readonly IS3Service? _s3Service;
         private readonly ILogger<MusicStreamController> _logger;
         private readonly IStreamTokenService _tokenService;
+        private readonly dynamic _breaker;
 
-        public MusicStreamController(IS3Service? s3Service, ILogger<MusicStreamController> logger, IStreamTokenService tokenService)
+        public MusicStreamController(IS3Service? s3Service, ILogger<MusicStreamController> logger, IStreamTokenService tokenService, dynamic breaker)
         {
             _s3Service = s3Service;
             _logger = logger;
             _tokenService = tokenService;
+            _breaker = breaker;
         }
 
         /// <summary>
@@ -31,7 +33,7 @@ namespace MusicAI.Orchestrator.Controllers
         /// No authentication required - used by OAP chat responses
         /// </summary>
         [HttpGet("hls/{*key}")]
-        public IActionResult GetHlsPlaylist([FromRoute] string key)
+        public async Task<IActionResult> GetHlsPlaylist([FromRoute] string key)
         {
             if (string.IsNullOrWhiteSpace(key))
             {
@@ -39,6 +41,12 @@ namespace MusicAI.Orchestrator.Controllers
             }
 
             _logger.LogInformation("HLS playlist requested for key: {Key}", key);
+
+            if (_breaker != null && _breaker.IsOpen)
+            {
+                _logger.LogWarning("Manifest generation circuit open - rejecting HLS request for {Key}", key);
+                return StatusCode(503, new { error = "Temporarily unavailable" });
+            }
 
             // Enforce Origin whitelist for HLS requests to prevent direct downloads
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
@@ -55,13 +63,131 @@ namespace MusicAI.Orchestrator.Controllers
                 _logger.LogWarning("Blocked HLS request missing token for key: {Key}", key);
                 return StatusCode(403, new { error = "Missing token" });
             }
-            if (!_tokenService.ValidateToken(token, out var tokenS3Key) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
+            if (!_tokenService.ValidateToken(token, out var tokenS3Key, out var tokenAllowExplicit) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
             {
                 _logger.LogWarning("Blocked HLS request with invalid token or key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key);
                 return StatusCode(403, new { error = "Invalid or expired token" });
             }
 
-            // Generate HLS master playlist pointing to public stream proxy
+            // If S3 is configured and the key points to an HLS manifest in S3, download the manifest,
+            // rewrite any relative segment/variant URIs to presigned S3 URLs, and return the rewritten manifest.
+            if (_s3Service != null && key.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    // Check object existence
+                    var exists = await _s3Service.ObjectExistsAsync(key);
+                    if (exists)
+                    {
+                        var tmpFile = Path.Combine(Path.GetTempPath(), $"hls_manifest_{Guid.NewGuid():N}.m3u8");
+                        var downloaded = await _s3Service.DownloadFileAsync(key, tmpFile);
+                        if (!downloaded || !System.IO.File.Exists(tmpFile))
+                        {
+                            _logger.LogError("Failed to download manifest {Key} from S3", key);
+                            return NotFound(new { error = "Manifest not found" });
+                        }
+
+                        var content = await System.IO.File.ReadAllTextAsync(tmpFile);
+                        var lines = content.Split(new[] { '\n' }).Select(l => l.TrimEnd('\r')).ToList();
+
+                        // Presign expiry (minutes)
+                        var expiryMinutes = 60;
+                        var expiryEnv = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_EXPIRY_MINUTES");
+                        if (!string.IsNullOrEmpty(expiryEnv) && int.TryParse(expiryEnv, out var ev)) expiryMinutes = ev;
+
+                        // If CloudFront is configured, issue signed cookies for the client so it can fetch multiple objects without per-URL signing.
+                        if (CloudFrontCookieHelper.IsConfigured())
+                        {
+                            try
+                            {
+                                var cfCookies = CloudFrontCookieHelper.GetSignedCookies("*", TimeSpan.FromMinutes(expiryMinutes));
+                                if (cfCookies.HasValue)
+                                {
+                                    var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
+                                    {
+                                        HttpOnly = false,
+                                        Secure = true,
+                                        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None,
+                                        Expires = DateTimeOffset.UtcNow.AddMinutes(expiryMinutes),
+                                        Path = "/"
+                                    };
+                                    Response.Cookies.Append("CloudFront-Policy", cfCookies.Value.policy, cookieOptions);
+                                    Response.Cookies.Append("CloudFront-Signature", cfCookies.Value.signature, cookieOptions);
+                                    Response.Cookies.Append("CloudFront-Key-Pair-Id", cfCookies.Value.keyPairId, cookieOptions);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to generate CloudFront signed cookies");
+                            }
+                        }
+
+                        // Directory prefix for segments/variants
+                        var dir = key.Contains('/') ? key.Substring(0, key.LastIndexOf('/')) : string.Empty;
+
+                        for (int i = 0; i < lines.Count; i++)
+                        {
+                            var line = lines[i];
+                            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+
+                            if (Uri.IsWellFormedUriString(line, UriKind.Absolute))
+                            {
+                                // Already absolute URL; skip
+                                continue;
+                            }
+
+                            // Build S3 key for the referenced resource
+                            var referencedKey = string.IsNullOrEmpty(dir) ? line : $"{dir}/{line}";
+
+                            try
+                            {
+                                // Prefer CDN_DOMAIN when set, then CloudFront domain (cookies), else presigned S3 URL
+                                var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
+                                if (!string.IsNullOrEmpty(cdn))
+                                {
+                                    lines[i] = $"https://{cdn}/{referencedKey.TrimStart('/')}";
+                                }
+                                else if (CloudFrontCookieHelper.IsConfigured())
+                                {
+                                    var cfDomain = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
+                                    if (!string.IsNullOrEmpty(cfDomain))
+                                    {
+                                        lines[i] = $"https://{cfDomain}/{referencedKey.TrimStart('/')}";
+                                    }
+                                    else
+                                    {
+                                        var presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, TimeSpan.FromMinutes(expiryMinutes));
+                                        lines[i] = presigned;
+                                    }
+                                }
+                                else
+                                {
+                                    var presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, TimeSpan.FromMinutes(expiryMinutes));
+                                    lines[i] = presigned;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to presign referenced HLS resource {Resource} referenced in {Key}", referencedKey, key);
+                                // Leave original line if presign fails
+                            }
+                        }
+
+                        var rewritten = string.Join("\n", lines);
+                        try { System.IO.File.Delete(tmpFile); } catch { }
+
+                        Response.Headers["Content-Disposition"] = "inline";
+                        return Content(rewritten, "application/vnd.apple.mpegurl");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while generating presigned HLS manifest for {Key}", key);
+                    // fallthrough to fallback manifest generation below
+                }
+            }
+
+            // Fallback: generate a simple HLS manifest that proxies the stream endpoint
             var baseUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{Uri.EscapeDataString(key)}";
 
             var m3u8Content = $@"#EXTM3U
@@ -76,10 +202,8 @@ namespace MusicAI.Orchestrator.Controllers
 
 #EXT-X-ENDLIST";
 
-            var result = Content(m3u8Content, "application/vnd.apple.mpegurl");
-            // Encourage browsers to play inline (not download)
             Response.Headers["Content-Disposition"] = "inline";
-            return result;
+            return Content(m3u8Content, "application/vnd.apple.mpegurl");
         }
 
         /// <summary>
@@ -112,7 +236,7 @@ namespace MusicAI.Orchestrator.Controllers
                 _logger.LogWarning("Blocked stream request missing token for key: {Key}", key);
                 return StatusCode(403, new { error = "Missing token" });
             }
-            if (!_tokenService.ValidateToken(token, out var tokenS3Key) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
+            if (!_tokenService.ValidateToken(token, out var tokenS3Key, out var tokenAllowExplicit) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
             {
                 _logger.LogWarning("Blocked stream request with invalid token or key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key);
                 return StatusCode(403, new { error = "Invalid or expired token" });
@@ -126,6 +250,41 @@ namespace MusicAI.Orchestrator.Controllers
 
             try
             {
+                // If CloudFront signed cookies are available, issue them and redirect client to CloudFront URL for direct fetch
+                if (CloudFrontCookieHelper.IsConfigured())
+                {
+                    try
+                    {
+                        var cf = CloudFrontCookieHelper.GetSignedCookies("*", TimeSpan.FromMinutes(5));
+                        if (cf.HasValue)
+                        {
+                            var cookieOptions = new Microsoft.AspNetCore.Http.CookieOptions
+                            {
+                                HttpOnly = false,
+                                Secure = true,
+                                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None,
+                                Expires = DateTimeOffset.UtcNow.AddMinutes(5),
+                                Path = "/"
+                            };
+                            Response.Cookies.Append("CloudFront-Policy", cf.Value.policy, cookieOptions);
+                            Response.Cookies.Append("CloudFront-Signature", cf.Value.signature, cookieOptions);
+                            Response.Cookies.Append("CloudFront-Key-Pair-Id", cf.Value.keyPairId, cookieOptions);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to generate CloudFront cookies for stream redirect");
+                    }
+
+                    var cfDomain = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
+                    if (!string.IsNullOrEmpty(cfDomain))
+                    {
+                        var redirectUrl = $"https://{cfDomain}/{key}";
+                        return Redirect(redirectUrl);
+                    }
+                }
+
+                // Fallback to proxying via S3 presigned URL
                 // Get presigned URL from S3 (short-lived, 5 minutes)
                 var presignedUrl = await _s3Service.GetPresignedUrlAsync(key, TimeSpan.FromMinutes(5));
 
@@ -155,9 +314,29 @@ namespace MusicAI.Orchestrator.Controllers
                 }
 
                 // Set appropriate headers for audio streaming
-                var contentType = response.Content.Headers.ContentType?.ToString() ?? "audio/mpeg";
+                var contentType = response.Content.Headers.ContentType?.ToString();
+                // If S3 returned no content type or generic octet-stream, try to infer from file extension
+                if (string.IsNullOrEmpty(contentType) || contentType.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
+                {
+                    var ext = System.IO.Path.GetExtension(key ?? string.Empty)?.ToLowerInvariant();
+                    contentType = ext switch
+                    {
+                        ".mp3" => "audio/mpeg",
+                        ".m4a" => "audio/mp4",
+                        ".mp4" => "audio/mp4",
+                        ".aac" => "audio/aac",
+                        ".wav" => "audio/wav",
+                        ".ogg" => "audio/ogg",
+                        ".m3u8" => "application/vnd.apple.mpegurl",
+                        _ => "audio/mpeg"
+                    };
+                    _logger.LogDebug("Overriding missing/opaque content-type for key {Key} -> {ContentType}", key, contentType);
+                }
+                else
+                {
+                    // use the returned content type
+                }
                 var contentLength = response.Content.Headers.ContentLength;
-
                 Response.ContentType = contentType;
                 
                 if (contentLength.HasValue)
@@ -177,6 +356,12 @@ namespace MusicAI.Orchestrator.Controllers
                 // Cache for 1 hour
                 Response.Headers["Cache-Control"] = "public, max-age=3600";
                 Response.Headers["Accept-Ranges"] = "bytes";
+
+                // Ensure we do NOT suggest download via Content-Disposition
+                if (Response.Headers.ContainsKey("Content-Disposition"))
+                {
+                    Response.Headers.Remove("Content-Disposition");
+                }
 
                 // Handle partial content (206) for Range requests
                 if (response.StatusCode == System.Net.HttpStatusCode.PartialContent)
@@ -216,6 +401,83 @@ namespace MusicAI.Orchestrator.Controllers
                 Response.Headers["Access-Control-Allow-Headers"] = "Range, Content-Type";
             }
             return Ok();
+        }
+
+        // Reflection-based helper to safely interact with an optional CloudFrontCookieSigner type
+        // This avoids a hard compile dependency on MusicAI.Infrastructure.Services.CloudFrontCookieSigner
+        private static class CloudFrontCookieHelper
+        {
+            public static bool IsConfigured()
+            {
+                try
+                {
+                    var type = FindType();
+                    if (type == null) return false;
+                    var prop = type.GetProperty("IsConfigured", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    if (prop == null) return false;
+                    var val = prop.GetValue(null);
+                    return val is bool b && b;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            public static (string policy, string signature, string keyPairId)? GetSignedCookies(string resource, TimeSpan expiry)
+            {
+                try
+                {
+                    var type = FindType();
+                    if (type == null) return null;
+                    var method = type.GetMethod("GetSignedCookies", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    if (method == null) return null;
+                    var result = method.Invoke(null, new object[] { resource, expiry });
+                    if (result == null) return null;
+
+                    // Handle Nullable<T> results that have HasValue / Value
+                    var resultType = result.GetType();
+                    var hasValueProp = resultType.GetProperty("HasValue");
+                    object valueObj = result;
+                    if (hasValueProp != null)
+                    {
+                        var hasValue = (bool)hasValueProp.GetValue(result);
+                        if (!hasValue) return null;
+                        var valueProp = resultType.GetProperty("Value");
+                        if (valueProp == null) return null;
+                        valueObj = valueProp.GetValue(result);
+                    }
+
+                    if (valueObj == null) return null;
+
+                    var policy = valueObj.GetType().GetProperty("policy")?.GetValue(valueObj)?.ToString();
+                    var signature = valueObj.GetType().GetProperty("signature")?.GetValue(valueObj)?.ToString();
+                    var keyPairId = valueObj.GetType().GetProperty("keyPairId")?.GetValue(valueObj)?.ToString();
+
+                    if (policy == null || signature == null || keyPairId == null) return null;
+                    return (policy, signature, keyPairId);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            private static Type FindType()
+            {
+                try
+                {
+                    foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        var t = a.GetType("MusicAI.Infrastructure.Services.CloudFrontCookieSigner");
+                        if (t != null) return t;
+                    }
+                }
+                catch
+                {
+                }
+                return null;
+            }
         }
     }
 }
