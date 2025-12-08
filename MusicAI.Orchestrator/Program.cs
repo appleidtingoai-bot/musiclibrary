@@ -67,6 +67,7 @@ else
     Console.WriteLine("⚠ Warning: No .env file found in any expected location. Using default/environment configuration.");
 }
 
+// Create the application builder
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure distributed cache FIRST (Redis for production, in-memory for development)
@@ -98,15 +99,8 @@ else
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-// Configure CORS: read allowed origins from config or env, default to localhost:3000 and your domain
-var allowedOriginsRaw = builder.Configuration["Cors:AllowedOrigins"]
-                       ?? Environment.GetEnvironmentVariable("Cors__AllowedOrigins")
-                       ?? "http://localhost:3000,http://tingoradio.ai,https://tingoradio.ai,https://www.tingoradio.ai,https://tingoradiomusiclibrary.tingoai.ai";
-var allowedOrigins = allowedOriginsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries)
-    .Select(s => s.Trim())
-    .Where(s => !string.IsNullOrEmpty(s))
-    .ToArray();
-
+// Configure CORS: allow production domains and local dev
+var allowedOrigins = new[] { "https://tingoradio.ai", "https://www.tingoradio.ai", "http://localhost:3000" };
 Console.WriteLine($"✓ CORS enabled for origins: {string.Join(", ", allowedOrigins)}");
 
 builder.Services.AddCors(options =>
@@ -116,8 +110,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials() // Required for cookies (HttpOnly auth)
-              .SetPreflightMaxAge(TimeSpan.FromMinutes(10)); // Cache preflight for 10 minutes
+              .AllowCredentials()
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
     });
 });
 
@@ -155,8 +149,13 @@ catch (Exception ex)
 var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") 
     ?? builder.Configuration["Jwt:Key"] 
     ?? "dev_jwt_secret_minimum_32_characters_required_for_hs256";
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "musicai.local";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "musicai.clients";
+// Align defaults with user token generator (OnboardingController)
+var jwtIssuer = builder.Configuration["Jwt:Issuer"]
+               ?? Environment.GetEnvironmentVariable("JWT_ISSUER")
+               ?? "MusicAI";
+var jwtAudience = builder.Configuration["Jwt:Audience"]
+                ?? Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+                ?? "MusicAIUsers";
 
 // Add Authentication with both JWT Bearer and Cookie support
 builder.Services.AddAuthentication(options =>
@@ -168,8 +167,9 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
+        // Accept tokens without strict issuer/audience to support both Admin and User tokens
+        ValidateIssuer = false,
+        ValidateAudience = false,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtIssuer,
@@ -177,12 +177,12 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
             System.Text.Encoding.UTF8.GetBytes(jwtKey)),
         ClockSkew = TimeSpan.FromSeconds(30),
-        // Map custom claims to standard claim types
-        RoleClaimType = "role",
+        // Default role claim type; we'll also normalize custom 'role' below
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role,
         NameClaimType = "sub"
     };
-    
-    // Allow JWT from Authorization header OR cookie
+
+    // Allow JWT from Authorization header OR cookie and normalize role claims
     options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -192,13 +192,30 @@ builder.Services.AddAuthentication(options =>
             {
                 return Task.CompletedTask;
             }
-            
+
             // Fallback to cookie
             if (context.Request.Cookies.TryGetValue("MusicAI.Auth", out var token))
             {
                 context.Token = token;
             }
-            
+
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            // If token uses a custom 'role' claim, copy it into ClaimTypes.Role
+            var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+            if (identity != null)
+            {
+                var roleClaims = identity.FindAll("role").ToList();
+                foreach (var rc in roleClaims)
+                {
+                    if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, rc.Value))
+                    {
+                        identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, rc.Value));
+                    }
+                }
+            }
             return Task.CompletedTask;
         }
     };
@@ -222,6 +239,11 @@ builder.Services.AddAuthorization(options =>
                   context.User.IsInRole("User") || 
                   context.User.IsInRole("Admin") || 
                   context.User.IsInRole("SuperAdmin")));
+    // Global: require authenticated users by default unless [AllowAnonymous]
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .Build();
 });
 
 // Enhanced Swagger configuration with X-Admin-Token authentication
@@ -238,7 +260,33 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 
-    // Add X-Admin-Token security definition
+    // Add JWT Bearer security for user/admin tokens in Authorization header
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            System.Array.Empty<string>()
+        }
+    });
+
+    // Add X-Admin-Token security definition (for legacy admin cookie flows/testing)
     options.AddSecurityDefinition("X-Admin-Token", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
@@ -501,8 +549,7 @@ app.UseCors("DefaultCors");
 // Enable WebSockets for real-time control sync
 app.UseWebSockets();
 
-// Serve static files from wwwroot (player_test.html)
-app.UseStaticFiles();
+// Static files are disabled (wwwroot removed)
 
 // Development: ensure the app listens on both http and https for local testing
 if (app.Environment.IsDevelopment())
@@ -538,6 +585,51 @@ app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
 // Ensure routing and controllers are mapped
 app.MapControllers();
+
+// Enforce allowed domains (Origin/Referer/Host): only tingoradio.ai
+app.Use(async (context, next) =>
+{
+    var approvedHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "tingoradio.ai",
+        "www.tingoradio.ai",
+        "localhost"
+    };
+
+    // Allow preflight
+    if (context.Request.Method == "OPTIONS")
+    {
+        await next();
+        return;
+    }
+
+    string? origin = context.Request.Headers["Origin"].FirstOrDefault();
+    string? referer = context.Request.Headers["Referer"].FirstOrDefault();
+
+    bool headerOk = false;
+    bool Check(string? h)
+    {
+        if (string.IsNullOrWhiteSpace(h)) return false;
+        if (Uri.TryCreate(h, UriKind.Absolute, out var u))
+        {
+            return approvedHosts.Contains(u.Host);
+        }
+        return false;
+    }
+
+    headerOk = Check(origin) || Check(referer);
+
+    var hostOk = approvedHosts.Contains(context.Request.Host.Host);
+
+    if (!(headerOk || hostOk))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await context.Response.WriteAsync("Forbidden: domain not allowed");
+        return;
+    }
+
+    await next();
+});
 
 // Log the listening addresses so it's easy to see where to open Swagger
 try

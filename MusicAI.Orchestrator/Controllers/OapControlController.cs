@@ -84,6 +84,7 @@ namespace MusicAI.Orchestrator.Controllers
         }
 
         // Lightweight WebSocket endpoint for real-time state sync
+        // Supports JWT via Authorization header or token query param for browser compatibility.
         [AllowAnonymous]
         [HttpGet("ws/{userId}")]
         public async Task GetWs(string userId)
@@ -93,6 +94,59 @@ namespace MusicAI.Orchestrator.Controllers
                 HttpContext.Response.StatusCode = 400;
                 return;
             }
+
+            // Optional JWT validation: accept Authorization: Bearer or ?token= for browsers
+            try
+            {
+                string? token = null;
+                if (Request.Headers.TryGetValue("Authorization", out var authHeader) && authHeader.Count > 0)
+                {
+                    var raw = authHeader.ToString();
+                    if (raw.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        token = raw.Substring("Bearer ".Length).Trim();
+                    }
+                }
+                if (string.IsNullOrEmpty(token))
+                {
+                    token = Request.Query.ContainsKey("token") ? Request.Query["token"].ToString() : null;
+                }
+
+                if (!string.IsNullOrEmpty(token))
+                {
+                    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "dev_jwt_secret_minimum_32_characters_required_for_hs256";
+                    var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtSecret));
+                    var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                    var parms = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = key,
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.FromSeconds(30)
+                    };
+                    try
+                    {
+                        var principal = handler.ValidateToken(token, parms, out var validated);
+                        var sub = principal.FindFirst("sub")?.Value ?? principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                        if (!string.IsNullOrEmpty(sub) && sub != userId && !principal.IsInRole("Admin") && !principal.IsInRole("SuperAdmin"))
+                        {
+                            HttpContext.Response.StatusCode = 403;
+                            return;
+                        }
+                        // Attach principal to HttpContext so downstream can inspect User
+                        HttpContext.User = principal;
+                    }
+                    catch
+                    {
+                        // Invalid token: reject
+                        HttpContext.Response.StatusCode = 401;
+                        return;
+                    }
+                }
+            }
+            catch { }
 
             using var ws = await HttpContext.WebSockets.AcceptWebSocketAsync();
             var cts = new CancellationTokenSource();

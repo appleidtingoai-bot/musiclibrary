@@ -299,7 +299,7 @@ namespace MusicAI.Orchestrator.Controllers
         /// Optimized for quick load (under 35KB). Includes adaptive buffering configuration.
         /// Frontend requests more tracks as needed for infinite playback.
         /// </summary>
-        [AllowAnonymous]
+        
         [HttpGet("playlist/{userId}")]
         public async Task<IActionResult> GetContinuousPlaylist(string userId, [FromQuery] int count = 5, [FromQuery] bool light = false, [FromQuery] int offset = 0, [FromQuery] bool manifestOnly = false)
         {
