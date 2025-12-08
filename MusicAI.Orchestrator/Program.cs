@@ -566,7 +566,15 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<RateLimitMiddleware>();
 
 app.UseAuthentication();
-app.UseAuthorization();
+
+// Do not apply the global Authorization middleware to the Swagger UI
+// so developers can access API docs without authentication while APIs
+// remain protected by the FallbackPolicy. This uses UseWhen to only
+// apply authorization to non-Swagger requests.
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase), appBuilder =>
+{
+    appBuilder.UseAuthorization();
+});
 
 // Swagger (enabled in all environments for API documentation)
 app.UseSwagger();
