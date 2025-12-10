@@ -71,7 +71,16 @@ public class OnboardingController : ControllerBase
             IpAddress = ip,
             TrialExpires = DateTime.UtcNow.AddDays(1) // Changed to 1 day trial
         };
-        _usersRepo.Create(user);
+        try
+        {
+            _usersRepo.Create(user);
+        }
+        catch (Exception ex)
+        {
+            // Log the DB error and return a friendly 503 so callers don't receive a raw 500
+            try { Console.WriteLine($"⚠ Failed to create user in DB: {ex.GetType().Name}: {ex.Message}"); } catch { }
+            return StatusCode(503, new { error = "Database unavailable", detail = ex.Message });
+        }
 
         var role = "User";
         var (token, expires) = CreateJwtToken(id, role, isSubscribed: user.IsSubscribed);
