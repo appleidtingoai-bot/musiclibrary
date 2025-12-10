@@ -668,7 +668,14 @@ app.UseMiddleware<RateLimitMiddleware>();
 // Apply Authentication+Authorization to all requests EXCEPT Swagger endpoints
 // so the Swagger UI and the generated JSON can be loaded without a JWT while
 // keeping all API routes protected by the FallbackPolicy.
-app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase), appBuilder =>
+app.UseWhen(context =>
+{
+    var path = context.Request.Path;
+    // Exempt Swagger UI and the root path (which redirects to Swagger) from auth
+    bool isSwagger = path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase);
+    bool isRoot = path == "/";
+    return !(isSwagger || isRoot);
+}, appBuilder =>
 {
     appBuilder.UseAuthentication();
     appBuilder.UseAuthorization();
