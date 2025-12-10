@@ -57,40 +57,57 @@ namespace MusicAI.Orchestrator.Data
 
         public UserRecord? GetByEmail(string email)
         {
-            using var db = Connection();
-            db.Open();
-            // Explicit column mapping for PostgreSQL snake_case to C# PascalCase
-            return db.QuerySingleOrDefault<UserRecord>(@"
-                SELECT 
-                    id as Id,
-                    email as Email,
-                    password_hash as PasswordHash,
-                    is_subscribed as IsSubscribed,
-                    credits as Credits,
-                    country as Country,
-                    ip_address as IpAddress,
-                    trial_expires as TrialExpires
-                FROM users 
-                WHERE LOWER(email) = LOWER(@Email)", new { Email = email });
+            try
+            {
+                using var db = Connection();
+                db.Open();
+                // Explicit column mapping for PostgreSQL snake_case to C# PascalCase
+                return db.QuerySingleOrDefault<UserRecord>(@"
+                    SELECT 
+                        id as Id,
+                        email as Email,
+                        password_hash as PasswordHash,
+                        is_subscribed as IsSubscribed,
+                        credits as Credits,
+                        country as Country,
+                        ip_address as IpAddress,
+                        trial_expires as TrialExpires
+                    FROM users 
+                    WHERE LOWER(email) = LOWER(@Email)", new { Email = email });
+            }
+            catch (Exception ex)
+            {
+                // Log and return null so callers receive Unauthorized instead of a 500
+                Console.WriteLine($"⚠ UsersRepository.GetByEmail failed: {ex.GetType().Name}: {ex.Message}");
+                return null;
+            }
         }
 
         public UserRecord? GetById(string id)
         {
-            using var db = Connection();
-            db.Open();
-            // Explicit column mapping for PostgreSQL snake_case to C# PascalCase
-            return db.QuerySingleOrDefault<UserRecord>(@"
-                SELECT 
-                    id as Id,
-                    email as Email,
-                    password_hash as PasswordHash,
-                    is_subscribed as IsSubscribed,
-                    credits as Credits,
-                    country as Country,
-                    ip_address as IpAddress,
-                    trial_expires as TrialExpires
-                FROM users 
-                WHERE id = @Id", new { Id = id });
+            try
+            {
+                using var db = Connection();
+                db.Open();
+                // Explicit column mapping for PostgreSQL snake_case to C# PascalCase
+                return db.QuerySingleOrDefault<UserRecord>(@"
+                    SELECT 
+                        id as Id,
+                        email as Email,
+                        password_hash as PasswordHash,
+                        is_subscribed as IsSubscribed,
+                        credits as Credits,
+                        country as Country,
+                        ip_address as IpAddress,
+                        trial_expires as TrialExpires
+                    FROM users 
+                    WHERE id = @Id", new { Id = id });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠ UsersRepository.GetById failed: {ex.GetType().Name}: {ex.Message}");
+                return null;
+            }
         }
 
         public void UpdateSubscription(string id, bool subscribed)
