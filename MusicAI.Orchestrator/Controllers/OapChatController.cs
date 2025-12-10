@@ -291,9 +291,10 @@ namespace MusicAI.Orchestrator.Controllers
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
             var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count, offset);
 
+                // Presign expiry for streaming URLs (configurable)
                 var presignExpiry = TimeSpan.FromMinutes(60);
-                var expiryEnv = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_EXPIRY_MINUTES");
-                if (!string.IsNullOrEmpty(expiryEnv) && int.TryParse(expiryEnv, out var ev)) presignExpiry = TimeSpan.FromMinutes(ev);
+                var expiryEnvLocal = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_EXPIRY_MINUTES");
+                if (!string.IsNullOrEmpty(expiryEnvLocal) && int.TryParse(expiryEnvLocal, out var evLocal)) presignExpiry = TimeSpan.FromMinutes(evLocal);
 
                 var tracks = new List<MusicTrackDto>();
                 foreach (var track in playlist)
@@ -544,9 +545,10 @@ namespace MusicAI.Orchestrator.Controllers
                 sb.AppendLine("#EXT-X-MEDIA-SEQUENCE:0");
                 sb.AppendLine("#EXT-X-PLAYLIST-TYPE:VOD");
 
-                var presignExpiry = TimeSpan.FromMinutes(60);
+                // Use a separate manifest presign expiry to avoid name conflicts
+                var manifestPresignExpiry = TimeSpan.FromMinutes(60);
                 var expiryEnv = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_EXPIRY_MINUTES");
-                if (!string.IsNullOrEmpty(expiryEnv) && int.TryParse(expiryEnv, out var ev)) presignExpiry = TimeSpan.FromMinutes(ev);
+                if (!string.IsNullOrEmpty(expiryEnv) && int.TryParse(expiryEnv, out var ev)) manifestPresignExpiry = TimeSpan.FromMinutes(ev);
 
                 // Allow client to request that returned manifest use presigned URLs for direct objects
                 var presignRequested = Request.Query.ContainsKey("presign") && string.Equals(Request.Query["presign"].ToString(), "true", StringComparison.OrdinalIgnoreCase);
@@ -554,6 +556,12 @@ namespace MusicAI.Orchestrator.Controllers
                 var preSignSegments = 3;
                 var segEnv = Environment.GetEnvironmentVariable("MUSIC_PREFETCH_SEGMENTS");
                 if (!string.IsNullOrEmpty(segEnv) && int.TryParse(segEnv, out var segv)) preSignSegments = segv;
+
+                // Number of upcoming tracks to fully presign (all referenced HLS segments).
+                // This helps guarantee the player can fetch subsequent tracks without additional API calls.
+                var presignFullTracks = 2;
+                var fullEnv = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_FULL_TRACKS");
+                if (!string.IsNullOrEmpty(fullEnv) && int.TryParse(fullEnv, out var fv)) presignFullTracks = fv;
 
                 // CDN domain used for manifest URI rewriting
                 var cdnDomain = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
@@ -600,8 +608,9 @@ namespace MusicAI.Orchestrator.Controllers
                     combinedPlaylist = combinedPlaylist.Where(t => !IsProbablyExplicit(t)).ToList();
                 }
 
-                foreach (var track in combinedPlaylist)
+                for (int trackIndex = 0; trackIndex < combinedPlaylist.Count; trackIndex++)
                 {
+                    var track = combinedPlaylist[trackIndex];
                     var baseKey = track.S3Key ?? string.Empty;
                     if (string.IsNullOrEmpty(baseKey)) continue;
 
@@ -649,40 +658,84 @@ namespace MusicAI.Orchestrator.Controllers
                                                         if (!string.IsNullOrEmpty(cdnDomain))
                                                         {
                                                             presigned = $"https://{cdnDomain}/{referencedKey.TrimStart('/')}";
-                                                            // do not increment signedSegmentCount because we're not signing
                                                         }
                                                         else
                                                         {
-                                                            // Only presign the first N segments per manifest to allow prefetching
-                                                            if (signedSegmentCount < preSignSegments)
+                                                            // If this track is within the window of fully-presigned tracks, presign every segment.
+                                                            if (trackIndex < presignFullTracks)
                                                             {
-                                                                // Try CloudFront signed URL first
-                                                                var cf = MusicAI.Infrastructure.Services.CloudFrontSigner.GetSignedUrl(referencedKey, presignExpiry);
-                                                                if (!string.IsNullOrEmpty(cf)) presigned = cf;
+                                                                if (!string.IsNullOrEmpty(referencedKey))
+                                                                {
+                                                                    var cf = MusicAI.Infrastructure.Services.CloudFrontSigner.GetSignedUrl(referencedKey, manifestPresignExpiry);
+                                                                    if (!string.IsNullOrEmpty(cf)) presigned = cf;
+                                                                    else presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, manifestPresignExpiry);
+                                                                }
                                                                 else
                                                                 {
-                                                                    presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
+                                                                    var allowExplicit = GetAllowExplicitFromClaims();
+                                                                    var token = _tokenService?.GenerateToken(baseKey ?? string.Empty, TimeSpan.FromHours(1), allowExplicit) ?? string.Empty;
+                                                                    var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                                                                    sb.AppendLine(GetCdnOrOriginUrl(baseKey, encoded));
                                                                 }
-                                                                signedSegmentCount++;
                                                             }
                                                             else
                                                             {
-                                                                // For remaining segments, prefer unsigned CloudFront domain if configured, else S3 presigned URL
-                                                                if (MusicAI.Infrastructure.Services.CloudFrontSigner.IsConfigured)
+                                                                // Only presign the first N segments per manifest to allow prefetching for other tracks
+                                                                if (signedSegmentCount < preSignSegments)
                                                                 {
-                                                                    var cfDomain = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
-                                                                    if (!string.IsNullOrEmpty(cfDomain))
+                                                                    if (!string.IsNullOrEmpty(referencedKey))
                                                                     {
-                                                                        presigned = $"https://{cfDomain}/{referencedKey.TrimStart('/')}";
+                                                                        var cf = MusicAI.Infrastructure.Services.CloudFrontSigner.GetSignedUrl(referencedKey, manifestPresignExpiry);
+                                                                        if (!string.IsNullOrEmpty(cf)) presigned = cf;
+                                                                        else presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, manifestPresignExpiry);
+                                                                        signedSegmentCount++;
                                                                     }
                                                                     else
                                                                     {
-                                                                        presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
+                                                                        var allowExplicit = GetAllowExplicitFromClaims();
+                                                                        var token = _tokenService?.GenerateToken(baseKey ?? string.Empty, TimeSpan.FromHours(1), allowExplicit) ?? string.Empty;
+                                                                        var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                                                                        sb.AppendLine(GetCdnOrOriginUrl(baseKey, encoded));
                                                                     }
                                                                 }
                                                                 else
                                                                 {
-                                                                    presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
+                                                                    // For remaining segments, prefer unsigned CloudFront domain if configured, else S3 presigned URL
+                                                                    if (MusicAI.Infrastructure.Services.CloudFrontSigner.IsConfigured)
+                                                                    {
+                                                                        var cfDomain = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
+                                                                        if (!string.IsNullOrEmpty(cfDomain) && !string.IsNullOrEmpty(referencedKey))
+                                                                        {
+                                                                            presigned = $"https://{cfDomain}/{referencedKey.TrimStart('/')}";
+                                                                        }
+                                                                        else if (!string.IsNullOrEmpty(referencedKey))
+                                                                        {
+                                                                            presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, manifestPresignExpiry);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            var allowExplicit = GetAllowExplicitFromClaims();
+                                                                            var token = _tokenService?.GenerateToken(baseKey ?? string.Empty, TimeSpan.FromHours(1), allowExplicit) ?? string.Empty;
+                                                                            var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                                                                            sb.AppendLine(GetCdnOrOriginUrl(baseKey, encoded));
+                                                                            continue;
+                                                                        }
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        if (!string.IsNullOrEmpty(referencedKey))
+                                                                        {
+                                                                            presigned = await _s3Service.GetPresignedUrlAsync(referencedKey, manifestPresignExpiry);
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            var allowExplicit = GetAllowExplicitFromClaims();
+                                                                            var token = _tokenService?.GenerateToken(baseKey ?? string.Empty, TimeSpan.FromHours(1), allowExplicit) ?? string.Empty;
+                                                                            var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                                                                            sb.AppendLine(GetCdnOrOriginUrl(baseKey, encoded));
+                                                                            continue;
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -720,8 +773,18 @@ namespace MusicAI.Orchestrator.Controllers
                                                     if (referencedKey.StartsWith("http", StringComparison.OrdinalIgnoreCase)) presignedVar = referencedKey;
                                                     else
                                                     {
-                                                        var cfVar = MusicAI.Infrastructure.Services.CloudFrontSigner.GetSignedUrl(referencedKey, presignExpiry);
-                                                        presignedVar = !string.IsNullOrEmpty(cfVar) ? cfVar : await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
+                                                        if (!string.IsNullOrEmpty(referencedKey))
+                                                        {
+                                                            var cfVar = MusicAI.Infrastructure.Services.CloudFrontSigner.GetSignedUrl(referencedKey, manifestPresignExpiry);
+                                                            presignedVar = !string.IsNullOrEmpty(cfVar) ? cfVar : await _s3Service.GetPresignedUrlAsync(referencedKey, manifestPresignExpiry);
+                                                        }
+                                                        else
+                                                        {
+                                                            var allowExplicit = GetAllowExplicitFromClaims();
+                                                            var token = _tokenService?.GenerateToken(baseKey ?? string.Empty, TimeSpan.FromHours(1), allowExplicit) ?? string.Empty;
+                                                            var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                                                            presignedVar = GetCdnOrOriginUrl(baseKey, encoded);
+                                                        }
                                                     }
                                                     sb.AppendLine(presignedVar);
                                                 }
@@ -763,7 +826,7 @@ namespace MusicAI.Orchestrator.Controllers
                     {
                         try
                         {
-                            var pres = await _s3Service.GetPresignedUrlAsync(baseKey, presignExpiry);
+                            var pres = await _s3Service.GetPresignedUrlAsync(baseKey, manifestPresignExpiry);
                             if (!string.IsNullOrEmpty(pres))
                             {
                                 sb.AppendLine(pres);
@@ -1450,9 +1513,14 @@ namespace MusicAI.Orchestrator.Controllers
             var segEnv = Environment.GetEnvironmentVariable("MUSIC_PREFETCH_SEGMENTS");
             if (!string.IsNullOrEmpty(segEnv) && int.TryParse(segEnv, out var segv)) preSignSegments = segv;
 
+            var presignFullTracks = 2;
+            var fullEnv = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_FULL_TRACKS");
+            if (!string.IsNullOrEmpty(fullEnv) && int.TryParse(fullEnv, out var fvv)) presignFullTracks = fvv;
+
             var cdnDomain = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
-            foreach (var track in combinedPlaylist)
+            for (int trackIndex = 0; trackIndex < combinedPlaylist.Count; trackIndex++)
             {
+                var track = combinedPlaylist[trackIndex];
                 var baseKey = track.S3Key ?? string.Empty;
                 if (string.IsNullOrEmpty(baseKey)) continue;
                 var withoutExt = baseKey.Contains('.') ? baseKey.Substring(0, baseKey.LastIndexOf('.')) : baseKey;
@@ -1494,21 +1562,29 @@ namespace MusicAI.Orchestrator.Controllers
                                                 }
                                                 else
                                                 {
-                                                    if (signedSegmentCount < preSignSegments)
+                                                    if (trackIndex < presignFullTracks)
                                                     {
                                                         var cf = MusicAI.Infrastructure.Services.CloudFrontSigner.GetSignedUrl(referencedKey, presignExpiry);
                                                         outUrl = !string.IsNullOrEmpty(cf) ? cf : await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
-                                                        signedSegmentCount++;
                                                     }
                                                     else
                                                     {
-                                                        if (MusicAI.Infrastructure.Services.CloudFrontSigner.IsConfigured)
+                                                        if (signedSegmentCount < preSignSegments)
                                                         {
-                                                            var cfDomain = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
-                                                            if (!string.IsNullOrEmpty(cfDomain)) outUrl = $"https://{cfDomain}/{referencedKey.TrimStart('/')}";
+                                                            var cf = MusicAI.Infrastructure.Services.CloudFrontSigner.GetSignedUrl(referencedKey, presignExpiry);
+                                                            outUrl = !string.IsNullOrEmpty(cf) ? cf : await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
+                                                            signedSegmentCount++;
+                                                        }
+                                                        else
+                                                        {
+                                                            if (MusicAI.Infrastructure.Services.CloudFrontSigner.IsConfigured)
+                                                            {
+                                                                var cfDomain = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
+                                                                if (!string.IsNullOrEmpty(cfDomain)) outUrl = $"https://{cfDomain}/{referencedKey.TrimStart('/')}";
+                                                                else outUrl = await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
+                                                            }
                                                             else outUrl = await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
                                                         }
-                                                        else outUrl = await _s3Service.GetPresignedUrlAsync(referencedKey, presignExpiry);
                                                     }
                                                 }
                                             }
