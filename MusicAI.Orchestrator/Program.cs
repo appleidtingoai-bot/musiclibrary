@@ -675,6 +675,62 @@ app.Use(async (ctx, next) =>
 Console.WriteLine("⚠ Authentication/Authorization middleware disabled - endpoints are public by default");
 
 // Swagger (enabled in all environments for API documentation)
+// Protect Swagger UI with a lightweight Basic Auth middleware.
+// Credentials are read from env vars `SWAGGER_USER` / `SWAGGER_PASS` and
+// default to 'Admin' / 'Admin' when not provided. This is a simple
+// protection suitable for small deployments; consider stronger auth
+// (nginx basic-auth or IP-restrictions) for production.
+var swaggerUser = Environment.GetEnvironmentVariable("SWAGGER_USER") ?? Environment.GetEnvironmentVariable("SWAGGER_BASIC_USER") ?? "Admin";
+var swaggerPass = Environment.GetEnvironmentVariable("SWAGGER_PASS") ?? Environment.GetEnvironmentVariable("SWAGGER_BASIC_PASS") ?? "TingoRadio@2026#";
+
+app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase), appBuilder =>
+{
+    appBuilder.Use(async (ctx, next) =>
+    {
+        var auth = ctx.Request.Headers["Authorization"].FirstOrDefault();
+        if (string.IsNullOrEmpty(auth) || !auth.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Response.Headers["WWW-Authenticate"] = "Basic realm=\"Swagger\"";
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await ctx.Response.WriteAsync("Unauthorized");
+            return;
+        }
+
+        var b64 = auth.Substring("Basic ".Length).Trim();
+        string decoded;
+        try
+        {
+            decoded = Encoding.UTF8.GetString(Convert.FromBase64String(b64));
+        }
+        catch
+        {
+            ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await ctx.Response.WriteAsync("Bad Authorization header");
+            return;
+        }
+
+        var parts = decoded.Split(new[] { ':' }, 2);
+        if (parts.Length != 2)
+        {
+            ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await ctx.Response.WriteAsync("Bad Authorization header");
+            return;
+        }
+
+        var user = parts[0];
+        var pass = parts[1];
+        if (!string.Equals(user, swaggerUser, StringComparison.Ordinal) || !string.Equals(pass, swaggerPass, StringComparison.Ordinal))
+        {
+            ctx.Response.Headers["WWW-Authenticate"] = "Basic realm=\"Swagger\"";
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await ctx.Response.WriteAsync("Unauthorized");
+            return;
+        }
+
+        await next();
+    });
+});
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
