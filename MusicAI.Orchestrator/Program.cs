@@ -665,6 +665,18 @@ if (app.Environment.IsDevelopment())
 // Add lightweight IP rate limiting middleware (in-memory). For production use an external store (Redis) or ALB WAF.
 app.UseMiddleware<RateLimitMiddleware>();
 
+// Diagnostic: log every incoming request path so we can see why swagger is being challenged
+app.Use(async (ctx, next) =>
+{
+    try
+    {
+        var logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("Startup");
+        logger.LogInformation("REQ {Method} {Path} Host:{Host}", ctx.Request.Method, ctx.Request.Path, ctx.Request.Host);
+    }
+    catch { }
+    await next();
+});
+
 // Apply Authentication+Authorization to all requests EXCEPT Swagger endpoints
 // so the Swagger UI and the generated JSON can be loaded without a JWT while
 // keeping all API routes protected by the FallbackPolicy.
@@ -677,6 +689,18 @@ app.UseWhen(context =>
     return !(isSwagger || isRoot);
 }, appBuilder =>
 {
+    // Diagnostic: log when authentication+authorization are about to be applied
+    appBuilder.Use(async (ctx, next) =>
+    {
+        try
+        {
+            var logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("Startup");
+            logger.LogInformation("AUTH APPLIED for {Path} Host:{Host}", ctx.Request.Path, ctx.Request.Host);
+        }
+        catch { }
+        await next();
+    });
+
     appBuilder.UseAuthentication();
     appBuilder.UseAuthorization();
 });
