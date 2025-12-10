@@ -993,10 +993,15 @@ namespace MusicAI.Orchestrator.Controllers
         {
             if (string.IsNullOrEmpty(s3Key))
                 return BadRequest(new { error = "s3Key is required" });
-            var token = _tokenService?.GenerateToken(s3Key ?? string.Empty, TimeSpan.FromMinutes(ttlMinutes), GetAllowExplicitFromClaims()) ?? string.Empty;
+
+            // After the null/empty check above, capture into a non-null local variable
+            // so nullable analysis knows this value is safe to pass to APIs that require a non-null string.
+            string key = s3Key!;
+
+            var token = _tokenService?.GenerateToken(key, TimeSpan.FromMinutes(ttlMinutes), GetAllowExplicitFromClaims()) ?? string.Empty;
             var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
 
-            var hlsUrl = GetCdnOrOriginUrl(s3Key, encoded);
+            var hlsUrl = GetCdnOrOriginUrl(key, encoded);
             string streamUrl = hlsUrl;
 
             // If S3 service available, try to generate a presigned object URL for direct object playback
@@ -1004,7 +1009,7 @@ namespace MusicAI.Orchestrator.Controllers
             {
                 try
                 {
-                    var pres = await _s3Service.GetPresignedUrlAsync(s3Key, TimeSpan.FromMinutes(ttlMinutes));
+                    var pres = await _s3Service.GetPresignedUrlAsync(key, TimeSpan.FromMinutes(ttlMinutes));
                     if (!string.IsNullOrEmpty(pres)) streamUrl = pres;
                 }
                 catch (Exception ex)
