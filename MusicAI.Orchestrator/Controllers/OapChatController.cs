@@ -142,27 +142,45 @@ namespace MusicAI.Orchestrator.Controllers
 
             // Convert to HLS streaming URLs (public endpoints, no auth required)
             // Use long-lived tokens for HLS so the frontend can prefetch and buffer across sessions.
-            var playlistWithUrls = playlist.Select(track =>
+            // Build playlist DTOs and include presigned StreamUrl when S3 is available.
+            var presignExpiry = TimeSpan.FromMinutes(60);
+            var expiryEnv = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_EXPIRY_MINUTES");
+            if (!string.IsNullOrEmpty(expiryEnv) && int.TryParse(expiryEnv, out var ev)) presignExpiry = TimeSpan.FromMinutes(ev);
+
+            var playlistWithUrls = new List<MusicTrackDto>();
+            foreach (var track in playlist)
             {
                 var allowExplicit = GetAllowExplicitFromClaims();
                 var token = _tokenService?.GenerateToken(track.S3Key ?? string.Empty, TimeSpan.FromHours(24), allowExplicit) ?? string.Empty;
                 var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
 
                 var hls = GetCdnOrOriginUrl(track.S3Key, encoded);
+                string stream = string.Empty;
+                if (_s3Service != null)
+                {
+                    try
+                    {
+                        var pres = await _s3Service.GetPresignedUrlAsync(track.S3Key ?? string.Empty, presignExpiry);
+                        if (!string.IsNullOrEmpty(pres)) stream = pres;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Presign failed for {Key}, falling back to HLS url", track.S3Key);
+                    }
+                }
 
-                return new MusicTrackDto
+                playlistWithUrls.Add(new MusicTrackDto
                 {
                     Id = track.Id,
                     Title = track.Title,
                     Artist = request.Light ? string.Empty : track.Artist,
                     S3Key = track.S3Key ?? string.Empty,
                     HlsUrl = hls,
-                    // Do not provide progressive stream URLs by default — frontend should use HLS variants only.
-                    StreamUrl = string.Empty,
+                    StreamUrl = stream ?? string.Empty,
                     Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
                     Genre = track.Genre
-                };
-            }).ToList();
+                });
+            }
 
             // If PlayNowS3Key is provided, ensure that track is first and set CurrentAudioUrl accordingly
             string? currentAudio = playlistWithUrls.FirstOrDefault()?.HlsUrl;
@@ -273,23 +291,42 @@ namespace MusicAI.Orchestrator.Controllers
             var analysis = new MessageAnalysis { Mood = "neutral", Intent = "listen" };
             var playlist = await GetPersonalizedPlaylist(activePersona.Id, analysis.Mood, analysis.Intent, userId, count, offset);
 
-                var tracks = playlist.Select(track =>
-            {
-                var allowExplicit = GetAllowExplicitFromClaims();
-                var token = _tokenService?.GenerateToken(track.S3Key ?? string.Empty, TimeSpan.FromHours(24), allowExplicit) ?? string.Empty;
-                var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
-                return new MusicTrackDto
+                var presignExpiry = TimeSpan.FromMinutes(60);
+                var expiryEnv = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_EXPIRY_MINUTES");
+                if (!string.IsNullOrEmpty(expiryEnv) && int.TryParse(expiryEnv, out var ev)) presignExpiry = TimeSpan.FromMinutes(ev);
+
+                var tracks = new List<MusicTrackDto>();
+                foreach (var track in playlist)
                 {
-                    Id = track.Id,
-                    Title = track.Title,
-                    Artist = track.Artist,
-                    S3Key = track.S3Key ?? string.Empty,
-                    HlsUrl = GetCdnOrOriginUrl(track.S3Key, encoded),
-                    StreamUrl = string.Empty,
-                    Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
-                    Genre = track.Genre
-                };
-            }).ToList();
+                    var allowExplicit = GetAllowExplicitFromClaims();
+                    var token = _tokenService?.GenerateToken(track.S3Key ?? string.Empty, TimeSpan.FromHours(24), allowExplicit) ?? string.Empty;
+                    var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
+                    string stream = string.Empty;
+                    if (_s3Service != null)
+                    {
+                        try
+                        {
+                            var pres = await _s3Service.GetPresignedUrlAsync(track.S3Key ?? string.Empty, presignExpiry);
+                            if (!string.IsNullOrEmpty(pres)) stream = pres;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Presign failed for {Key} in GetNextTracks", track.S3Key);
+                        }
+                    }
+
+                    tracks.Add(new MusicTrackDto
+                    {
+                        Id = track.Id,
+                        Title = track.Title,
+                        Artist = track.Artist,
+                        S3Key = track.S3Key ?? string.Empty,
+                        HlsUrl = GetCdnOrOriginUrl(track.S3Key, encoded),
+                        StreamUrl = stream ?? string.Empty,
+                        Duration = track.DurationSeconds.HasValue ? $"{track.DurationSeconds / 60}:{track.DurationSeconds % 60:00}" : null,
+                        Genre = track.Genre
+                    });
+                }
 
             return Ok(new { oap = activePersona.Name, tracks, isNews = false });
         }
@@ -391,67 +428,74 @@ namespace MusicAI.Orchestrator.Controllers
                 var controlBase = $"{Request.Scheme}://{Request.Host}/api/oap/control/{userId}";
                 var wsUrl = $"{(Request.IsHttps ? "wss" : "ws")}://{Request.Host}/api/oap/ws/{userId}";
 
-                return Ok(new
-                {
-                    oap = activePersona.Name,
-                    continuousHlsUrl = continuousUrl,
-                    continuousManifest = combinedManifest, // single-call manifest payload (m3u8 text)
-                    firstTrack = first == null ? null : new { id = firstId, title = firstTitle },
-                    controls = new
-                    {
-                        play = $"{controlBase}/play",
-                        pause = $"{controlBase}/pause",
-                        skip = $"{controlBase}/skip",
-                        previous = $"{controlBase}/previous",
-                        volume = $"{controlBase}/volume", // PUT { volume: 0-1 }
-                        shuffle = $"{controlBase}/shuffle",
-                        websocket = wsUrl
-                    },
-                    totalCount = playlist.Count,
-                    hasMore = playlist.Count >= count,
-                    nextUrl = $"{Request.Scheme}://{Request.Host}/api/oap/playlist/{userId}?count={count}&offset={offset + count}&light={light.ToString().ToLower()}",
-                    bufferConfig = new
-                    {
-                        minBufferSeconds = 3,
-                        maxBufferSeconds = 30,
-                        prefetchTracks = continuousPrefetchTracks,
-                        resumeBufferSeconds = 5
-                    }
-                });
+                // Return the combined manifest directly as M3U8 so media players (hls.js, native) can consume it.
+                Response.Headers["Content-Disposition"] = "inline";
+                return Content(combinedManifest, "application/vnd.apple.mpegurl");
             }
 
             // Token TTL and returned fields differ slightly in light mode to minimize payload.
-            var tracks = playlist.Select(track =>
+            var presignExpiry = TimeSpan.FromMinutes(60);
+            var expiryEnv2 = Environment.GetEnvironmentVariable("MUSIC_PRESIGN_EXPIRY_MINUTES");
+            if (!string.IsNullOrEmpty(expiryEnv2) && int.TryParse(expiryEnv2, out var ev2)) presignExpiry = TimeSpan.FromMinutes(ev2);
+
+            var tracks = new List<object>();
+            foreach (var track in playlist)
             {
                 var allowExplicit = GetAllowExplicitFromClaims();
                 var token = _tokenService?.GenerateToken(track.S3Key ?? string.Empty, TimeSpan.FromHours(24), allowExplicit) ?? string.Empty;
                 var encoded = string.IsNullOrEmpty(token) ? string.Empty : $"?t={WebUtility.UrlEncode(token)}";
 
-                    if (light)
-                    {
+                if (light)
+                {
                     // Minimal fields for fastest startup (smaller JSON)
-                    // Include `artist` as empty string so anonymous types match between branches
-                        var hlsUrl = GetCdnOrOriginUrl(track.S3Key, encoded);
-
-                        return new
+                    var hlsUrl = GetCdnOrOriginUrl(track.S3Key, encoded);
+                    string stream = string.Empty;
+                    if (_s3Service != null)
+                    {
+                        try
                         {
-                            id = track.Id,
-                            title = track.Title,
-                            artist = string.Empty,
-                            s3Key = track.S3Key,
-                            genre = track.Genre,
-                            duration = track.DurationSeconds,
-                            hlsUrl = hlsUrl,
-                            // If CloudFront not configured we avoid returning per-track signed URLs.
-                            // Clients should call /api/oap/track-url to obtain a short-lived tokenized URL when needed.
-                            tokenUrl = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CDN_DOMAIN")) ? string.Empty : $"{Request.Scheme}://{Request.Host}/api/oap/track-url?s3Key={Uri.EscapeDataString(track.S3Key ?? string.Empty)}&ttlMinutes=60"
-                        };
+                            var pres = await _s3Service.GetPresignedUrlAsync(track.S3Key ?? string.Empty, presignExpiry);
+                            if (!string.IsNullOrEmpty(pres)) stream = pres;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Presign failed for {Key} in light mapping", track.S3Key);
+                        }
+                    }
+
+                    tracks.Add(new
+                    {
+                        id = track.Id,
+                        title = track.Title,
+                        artist = string.Empty,
+                        s3Key = track.S3Key,
+                        genre = track.Genre,
+                        duration = track.DurationSeconds,
+                        hlsUrl = hlsUrl,
+                        streamUrl = string.IsNullOrEmpty(stream) ? null : stream,
+                        // Backward-compat tokenUrl for clients that still expect it
+                        tokenUrl = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CDN_DOMAIN")) ? $"{Request.Scheme}://{Request.Host}/api/oap/track-url?s3Key={Uri.EscapeDataString(track.S3Key ?? string.Empty)}&ttlMinutes=60" : string.Empty
+                    });
+                    continue;
                 }
 
                 // Default (non-light) includes artist + more metadata
                 var nonLightHls = GetCdnOrOriginUrl(track.S3Key, encoded);
+                string nonLightStream = string.Empty;
+                if (_s3Service != null)
+                {
+                    try
+                    {
+                        var pres = await _s3Service.GetPresignedUrlAsync(track.S3Key ?? string.Empty, presignExpiry);
+                        if (!string.IsNullOrEmpty(pres)) nonLightStream = pres;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Presign failed for {Key} in non-light mapping", track.S3Key);
+                    }
+                }
 
-                return new
+                tracks.Add(new
                 {
                     id = track.Id,
                     title = track.Title,
@@ -460,9 +504,10 @@ namespace MusicAI.Orchestrator.Controllers
                     genre = track.Genre,
                     duration = track.DurationSeconds,
                     hlsUrl = nonLightHls,
-                    tokenUrl = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CDN_DOMAIN")) ? string.Empty : $"{Request.Scheme}://{Request.Host}/api/oap/track-url?s3Key={Uri.EscapeDataString(track.S3Key ?? string.Empty)}&ttlMinutes=60"
-                };
-            }).ToList();
+                    streamUrl = string.IsNullOrEmpty(nonLightStream) ? null : nonLightStream,
+                    tokenUrl = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CDN_DOMAIN")) ? $"{Request.Scheme}://{Request.Host}/api/oap/track-url?s3Key={Uri.EscapeDataString(track.S3Key ?? string.Empty)}&ttlMinutes=60" : string.Empty
+                });
+            }
 
                 // If client requests a single continuous M3U8 manifest, return it
             var format = Request.Query.ContainsKey("format") ? Request.Query["format"].ToString() : string.Empty;
@@ -888,6 +933,19 @@ namespace MusicAI.Orchestrator.Controllers
                         }
                     }
 
+                    string inlineStream = string.Empty;
+                    if (_s3Service != null)
+                    {
+                        try
+                        {
+                            inlineStream = await _s3Service.GetPresignedUrlAsync(t.S3Key ?? string.Empty, TimeSpan.FromMinutes(60));
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Presign failed for {Key} when enriching playlist", t.S3Key);
+                        }
+                    }
+
                     enriched.Add(new
                     {
                         id = t.Id,
@@ -900,6 +958,7 @@ namespace MusicAI.Orchestrator.Controllers
                         // If CloudFront isn't configured we don't expose signed master URLs inline.
                         // Clients should request a short-lived signed URL via the track-url endpoint when needed.
                         tokenUrl = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CDN_DOMAIN")) ? string.Empty : $"{Request.Scheme}://{Request.Host}/api/oap/track-url?s3Key={Uri.EscapeDataString(t.S3Key ?? string.Empty)}&ttlMinutes=60",
+                        streamUrl = string.IsNullOrEmpty(inlineStream) ? null : inlineStream,
                         qualities
                     });
                 }
