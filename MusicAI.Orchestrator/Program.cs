@@ -331,19 +331,10 @@ builder.Services.AddAuthorization(options =>
                   context.User.IsInRole("User") || 
                   context.User.IsInRole("Admin") || 
                   context.User.IsInRole("SuperAdmin")));
-    // Global: require authenticated users by default unless [AllowAnonymous]
-    // In Development disable the global FallbackPolicy so Swagger and local testing work
-    if (!builder.Environment.IsDevelopment())
-    {
-        options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-            .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-            .RequireAuthenticatedUser()
-            .Build();
-    }
-    else
-    {
-        Console.WriteLine("⚠ Development environment: global authorization fallback disabled (use [Authorize] on controllers to protect endpoints)");
-    }
+    // Global: no automatic FallbackPolicy applied. We intentionally do not enforce
+    // a global 'require authenticated user' policy so endpoints are accessible
+    // by default. Use [Authorize] on controllers/actions if you want selective protection.
+    Console.WriteLine("⚠ Global authorization fallback disabled (no automatic global auth enforcement)");
 });
 
 // Enhanced Swagger configuration with X-Admin-Token authentication
@@ -677,33 +668,11 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-// Apply Authentication+Authorization to all requests EXCEPT Swagger endpoints
-// so the Swagger UI and the generated JSON can be loaded without a JWT while
-// keeping all API routes protected by the FallbackPolicy.
-app.UseWhen(context =>
-{
-    var path = context.Request.Path;
-    // Exempt Swagger UI and the root path (which redirects to Swagger) from auth
-    bool isSwagger = path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase);
-    bool isRoot = path == "/";
-    return !(isSwagger || isRoot);
-}, appBuilder =>
-{
-    // Diagnostic: log when authentication+authorization are about to be applied
-    appBuilder.Use(async (ctx, next) =>
-    {
-        try
-        {
-            var logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>().CreateLogger("Startup");
-            logger.LogInformation("AUTH APPLIED for {Path} Host:{Host}", ctx.Request.Path, ctx.Request.Host);
-        }
-        catch { }
-        await next();
-    });
-
-    appBuilder.UseAuthentication();
-    appBuilder.UseAuthorization();
-});
+// NOTE: Authentication/Authorization middleware is intentionally NOT added to
+// the request pipeline. We removed the global enforcement so endpoints are
+// public by default. If you want per-endpoint protection, add [Authorize]
+// attributes and re-enable UseAuthentication/UseAuthorization here.
+Console.WriteLine("⚠ Authentication/Authorization middleware disabled - endpoints are public by default");
 
 // Swagger (enabled in all environments for API documentation)
 app.UseSwagger();
