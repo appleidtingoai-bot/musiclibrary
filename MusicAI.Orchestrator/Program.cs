@@ -665,13 +665,12 @@ if (app.Environment.IsDevelopment())
 // Add lightweight IP rate limiting middleware (in-memory). For production use an external store (Redis) or ALB WAF.
 app.UseMiddleware<RateLimitMiddleware>();
 
-app.UseAuthentication();
-
-// Apply Authorization to all requests EXCEPT Swagger endpoints so the
-// Swagger UI and the generated JSON can be loaded without a JWT while
+// Apply Authentication+Authorization to all requests EXCEPT Swagger endpoints
+// so the Swagger UI and the generated JSON can be loaded without a JWT while
 // keeping all API routes protected by the FallbackPolicy.
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase), appBuilder =>
 {
+    appBuilder.UseAuthentication();
     appBuilder.UseAuthorization();
 });
 
@@ -680,7 +679,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "MusicAI Orchestrator V1");
-    // c.RoutePrefix = "swagger";
+    c.RoutePrefix = "swagger";
 });
 
 // Redirect root to swagger for convenience
