@@ -17,6 +17,8 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.15.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <!-- AWS Secrets Manager for production secret retrieval -->
+    <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.1.41" />
       <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
       <PackageReference Include="Polly" Version="8.2.0" />
       <PackageReference Include="Npgsql" Version="8.0.5" />

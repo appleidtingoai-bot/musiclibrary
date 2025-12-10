@@ -8,6 +8,9 @@ using MusicAI.Common.Models;
 using MusicAI.Infrastructure.Services;
 using System.IO;
 using System.IO.Compression;
+using System.Text;
+using Amazon.SecretsManager;
+using Amazon.SecretsManager.Model;
 using System.Linq;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
@@ -149,6 +152,34 @@ catch (Exception ex)
 var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") 
     ?? builder.Configuration["Jwt:Key"] 
     ?? "dev_jwt_secret_minimum_32_characters_required_for_hs256";
+
+// If a Secrets Manager ARN / name is provided, attempt to load the JWT secret from AWS Secrets Manager.
+// This allows production instances to keep secrets out of source control and rotate them centrally.
+var jwtSecretArn = Environment.GetEnvironmentVariable("JWT_SECRET_ARN") ?? builder.Configuration["Jwt:SecretArn"];
+if (!string.IsNullOrEmpty(jwtSecretArn) && (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JWT_SECRET")) || jwtKey == "dev_jwt_secret_minimum_32_characters_required_for_hs256"))
+{
+    try
+    {
+        using var sm = new AmazonSecretsManagerClient();
+        var req = new GetSecretValueRequest { SecretId = jwtSecretArn };
+        var resp = sm.GetSecretValueAsync(req).GetAwaiter().GetResult();
+        if (!string.IsNullOrEmpty(resp.SecretString))
+        {
+            jwtKey = resp.SecretString.Trim();
+            Console.WriteLine("✓ Loaded JWT secret from AWS Secrets Manager");
+        }
+        else if (resp.SecretBinary != null && resp.SecretBinary.Length > 0)
+        {
+            var bytes = resp.SecretBinary.ToArray();
+            jwtKey = Encoding.UTF8.GetString(bytes).Trim();
+            Console.WriteLine("✓ Loaded JWT secret (binary) from AWS Secrets Manager");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠ Could not load JWT secret from AWS Secrets Manager ({jwtSecretArn}): {ex.Message}");
+    }
+}
 // Align defaults with user token generator (OnboardingController)
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]
                ?? Environment.GetEnvironmentVariable("JWT_ISSUER")
@@ -165,24 +196,57 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-    {
-        // Accept tokens without strict issuer/audience to support both Admin and User tokens
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-            System.Text.Encoding.UTF8.GetBytes(jwtKey)),
-        ClockSkew = TimeSpan.FromSeconds(30),
-        // Default role claim type; we'll also normalize custom 'role' below
-        RoleClaimType = System.Security.Claims.ClaimTypes.Role,
-        NameClaimType = "sub"
-    };
+    // Prefer OIDC / JWKS if an Authority is configured (recommended for production)
+    var jwtAuthority = Environment.GetEnvironmentVariable("JWT_AUTHORITY") ?? builder.Configuration["Jwt:Authority"];
 
-    // Allow JWT from Authorization header OR cookie and normalize role claims
+    if (!string.IsNullOrEmpty(jwtAuthority))
+    {
+        // Configure automatic metadata/JWKS retrieval. This supports RS*/ES* algorithms and key rotation via 'kid'.
+        options.Authority = jwtAuthority;
+        options.Audience = jwtAudience;
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtAuthority.TrimEnd('/'),
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+            NameClaimType = "sub"
+        };
+
+        Console.WriteLine($"✓ Jwt configured to validate tokens from authority: {jwtAuthority}");
+    }
+    else
+    {
+        // Fallback: symmetric key from environment/config (HS256). NOT recommended for multi-node production.
+        if (string.IsNullOrEmpty(jwtKey))
+        {
+            Console.WriteLine("✗ Warning: JWT_SECRET is not set. Token validation will fail for signed tokens.");
+        }
+
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                System.Text.Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = System.Security.Claims.ClaimTypes.Role,
+            NameClaimType = "sub"
+        };
+
+        Console.WriteLine("✓ Jwt configured to validate HS256 tokens using JWT_SECRET (fallback)");
+    }
+
+    // Preserve events: allow JWT from Authorization header OR cookie and normalize role claims
     options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -190,6 +254,16 @@ builder.Services.AddAuthentication(options =>
             // Try Authorization header first
             if (context.Request.Headers.ContainsKey("Authorization"))
             {
+                try
+                {
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        var hdr = context.Request.Headers["Authorization"].FirstOrDefault() ?? string.Empty;
+                        var tokenPart = hdr.StartsWith("Bearer ") ? hdr.Substring(7) : string.Empty;
+                        Console.WriteLine($"→ Authorization header detected (token length: {tokenPart.Length})");
+                    }
+                }
+                catch { }
                 return Task.CompletedTask;
             }
 
@@ -197,8 +271,26 @@ builder.Services.AddAuthentication(options =>
             if (context.Request.Cookies.TryGetValue("MusicAI.Auth", out var token))
             {
                 context.Token = token;
+                try
+                {
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        Console.WriteLine($"→ Token extracted from cookie (length: {token?.Length ?? 0})");
+                    }
+                }
+                catch { }
             }
 
+            return Task.CompletedTask;
+        },
+        // Log authentication failures to help diagnose 401 issues in dev
+        OnAuthenticationFailed = context =>
+        {
+            try
+            {
+                Console.WriteLine($"⚠ Jwt authentication failed: {context.Exception?.GetType().Name}: {context.Exception?.Message}");
+            }
+            catch { }
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
@@ -240,10 +332,18 @@ builder.Services.AddAuthorization(options =>
                   context.User.IsInRole("Admin") || 
                   context.User.IsInRole("SuperAdmin")));
     // Global: require authenticated users by default unless [AllowAnonymous]
-    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
-        .RequireAuthenticatedUser()
-        .Build();
+    // In Development disable the global FallbackPolicy so Swagger and local testing work
+    if (!builder.Environment.IsDevelopment())
+    {
+        options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+            .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+            .RequireAuthenticatedUser()
+            .Build();
+    }
+    else
+    {
+        Console.WriteLine("⚠ Development environment: global authorization fallback disabled (use [Authorize] on controllers to protect endpoints)");
+    }
 });
 
 // Enhanced Swagger configuration with X-Admin-Token authentication
@@ -567,10 +667,9 @@ app.UseMiddleware<RateLimitMiddleware>();
 
 app.UseAuthentication();
 
-// Do not apply the global Authorization middleware to the Swagger UI
-// so developers can access API docs without authentication while APIs
-// remain protected by the FallbackPolicy. This uses UseWhen to only
-// apply authorization to non-Swagger requests.
+// Apply Authorization to all requests EXCEPT Swagger endpoints so the
+// Swagger UI and the generated JSON can be loaded without a JWT while
+// keeping all API routes protected by the FallbackPolicy.
 app.UseWhen(context => !context.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase), appBuilder =>
 {
     appBuilder.UseAuthorization();
@@ -581,11 +680,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "MusicAI Orchestrator V1");
-    c.RoutePrefix = "swagger";
-    c.DisplayRequestDuration();
-    c.EnableTryItOutByDefault();
-    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
-    c.ConfigObject.AdditionalItems["persistAuthorization"] = true; // keep token across refreshes
+    // c.RoutePrefix = "swagger";
 });
 
 // Redirect root to swagger for convenience
@@ -602,7 +697,11 @@ app.Use(async (context, next) =>
         "tingoradio.ai",
         "www.tingoradio.ai",
         "tingoradiomusiclibrary.tingoai.ai",
-        "localhost"
+        "localhost",
+        // Allow direct IP access on dev machines (useful when curling 127.0.0.1)
+        "127.0.0.1",
+        // IPv6 loopback
+        "::1"
     };
 
     // Allow preflight
