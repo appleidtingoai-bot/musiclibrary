@@ -91,7 +91,9 @@ public class OnboardingController : ControllerBase
             HttpOnly = true,
             Secure = Request.IsHttps,
             SameSite = SameSiteMode.None,
-            Expires = expires
+            Expires = expires,
+            Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
+            Path = "/"
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 
@@ -113,7 +115,9 @@ public class OnboardingController : ControllerBase
             HttpOnly = true,
             Secure = Request.IsHttps,
             SameSite = SameSiteMode.None,
-            Expires = expires
+            Expires = expires,
+            Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
+            Path = "/"
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 
@@ -212,7 +216,9 @@ public class OnboardingController : ControllerBase
                     HttpOnly = true,
                     Secure = Request.IsHttps,
                     SameSite = SameSiteMode.None,
-                    Expires = expires
+                    Expires = expires,
+                    Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
+                    Path = "/"
                 };
                 Response.Cookies.Append("MusicAI.Auth", newToken, cookieOptions);
 
@@ -288,7 +294,9 @@ public class OnboardingController : ControllerBase
             HttpOnly = true,
             Secure = Request.IsHttps,
             SameSite = SameSiteMode.None,
-            Expires = expires
+            Expires = expires,
+            Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
+            Path = "/"
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 

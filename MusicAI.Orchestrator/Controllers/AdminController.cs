@@ -97,6 +97,7 @@ public class AdminController : ControllerBase
                 Secure = true, // HTTPS only
                 SameSite = SameSiteMode.Strict,
                 Expires = expires,
+                Domain = Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
                 Path = "/"
             });
 
@@ -152,6 +153,7 @@ public class AdminController : ControllerBase
                 Secure = true,
                 SameSite = SameSiteMode.Strict,
                 Expires = expires,
+                Domain = Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
                 Path = "/"
             });
 
@@ -197,6 +199,7 @@ public class AdminController : ControllerBase
             Secure = true,
             SameSite = SameSiteMode.Strict,
             Expires = expires2,
+            Domain = Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
             Path = "/"
         });
 
@@ -288,6 +291,7 @@ public class AdminController : ControllerBase
                     Secure = true,
                     SameSite = SameSiteMode.Strict,
                     Expires = expires,
+                    Domain = Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
                     Path = "/"
                 });
 
