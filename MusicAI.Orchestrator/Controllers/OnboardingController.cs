@@ -89,11 +89,14 @@ public class OnboardingController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = Request.IsHttps,
+            Secure = true,             // required for SameSite=None
             SameSite = SameSiteMode.None,
-            Expires = expires,
-            Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
-            Path = "/"
+            Domain = _configuration["Cookie:Domain"] ??
+             Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ??
+                ".tingoradio.ai", // use leading dot to allow apex + subdomains
+            Path = "/",           
+            Expires = DateTimeOffset.UtcNow.AddDays(30)
+           
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 

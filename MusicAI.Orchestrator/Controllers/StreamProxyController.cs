@@ -14,11 +14,13 @@ namespace MusicAI.Orchestrator.Controllers
     {
         private readonly IS3Service _s3Service;
         private readonly ILogger<StreamProxyController> _logger;
+        private readonly System.Net.Http.IHttpClientFactory _httpFactory;
 
-        public StreamProxyController(IS3Service s3Service, ILogger<StreamProxyController> logger)
+        public StreamProxyController(IS3Service s3Service, ILogger<StreamProxyController> logger, System.Net.Http.IHttpClientFactory httpFactory)
         {
             _s3Service = s3Service;
             _logger = logger;
+            _httpFactory = httpFactory;
         }
 
         [HttpGet("stream-proxy")]
@@ -33,7 +35,7 @@ namespace MusicAI.Orchestrator.Controllers
                 var presigned = await _s3Service.GetPresignedUrlAsync(s3Key, TimeSpan.FromMinutes(10));
                 if (string.IsNullOrEmpty(presigned)) return NotFound(new { error = "could not generate presigned url" });
 
-                using var http = new System.Net.Http.HttpClient();
+                var http = _httpFactory != null ? _httpFactory.CreateClient("stream-proxy") : new System.Net.Http.HttpClient();
                 using var req = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, presigned);
 
                 // Forward Range header from the client if present to enable seeking / partial responses
@@ -43,24 +45,16 @@ namespace MusicAI.Orchestrator.Controllers
                     req.Headers.TryAddWithoutValidation("Range", rangeHeader);
                 }
 
-                var upstream = await http.SendAsync(req, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+                var upstream = await http.SendAsync(req, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, HttpContext.RequestAborted);
                 if (!upstream.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("Upstream returned {Status} for {Key}", upstream.StatusCode, s3Key);
                     return StatusCode((int)upstream.StatusCode, new { error = "upstream fetch failed" });
                 }
-
-                // Copy relevant headers
+                // Copy relevant response headers BEFORE writing body
                 if (upstream.Content.Headers.ContentType != null)
                 {
                     Response.ContentType = upstream.Content.Headers.ContentType.ToString();
-                }
-                // Set response status code (may be 200 or 206)
-                Response.StatusCode = (int)upstream.StatusCode;
-
-                if (upstream.Content.Headers.ContentLength.HasValue)
-                {
-                    Response.ContentLength = upstream.Content.Headers.ContentLength.Value;
                 }
 
                 // Forward partial content headers for range requests
@@ -73,10 +67,33 @@ namespace MusicAI.Orchestrator.Controllers
                     Response.Headers["Accept-Ranges"] = string.Join(",", upstream.Headers.GetValues("Accept-Ranges"));
                 }
 
-                // Stream the response body directly to client
-                using var stream = await upstream.Content.ReadAsStreamAsync();
-                await stream.CopyToAsync(Response.Body);
-                await Response.Body.FlushAsync();
+                // Copy other useful headers if present
+                if (upstream.Content.Headers.ContentDisposition != null)
+                {
+                    Response.Headers["Content-Disposition"] = upstream.Content.Headers.ContentDisposition.ToString();
+                }
+                if (upstream.Headers.ETag != null)
+                {
+                    Response.Headers["ETag"] = upstream.Headers.ETag.ToString();
+                }
+                if (upstream.Content.Headers.LastModified.HasValue)
+                {
+                    Response.Headers["Last-Modified"] = upstream.Content.Headers.LastModified.Value.ToString("R");
+                }
+
+                // Set response status code (may be 200 or 206)
+                Response.StatusCode = (int)upstream.StatusCode;
+
+                // Respect content-length when provided (otherwise Transfer-Encoding chunked will be used)
+                if (upstream.Content.Headers.ContentLength.HasValue)
+                {
+                    Response.ContentLength = upstream.Content.Headers.ContentLength.Value;
+                }
+
+                // Stream the response body directly to client honoring cancellation
+                using var stream = await upstream.Content.ReadAsStreamAsync(HttpContext.RequestAborted);
+                await stream.CopyToAsync(Response.Body, 81920, HttpContext.RequestAborted);
+                await Response.Body.FlushAsync(HttpContext.RequestAborted);
                 return new EmptyResult();
             }
             catch (Exception ex)

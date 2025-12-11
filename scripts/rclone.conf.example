@@ -1,0 +1,21 @@
+# rclone config template (example)
+# Run `rclone config` and use the values below as reference.
+
+[s3remote]
+type = s3
+provider = AWS
+env_auth = false
+access_key_id = <AWS_ACCESS_KEY_ID>
+secret_access_key = <AWS_SECRET_ACCESS_KEY>
+region = us-east-2
+
+[r2remote]
+type = s3
+provider = Other
+access_key_id = <R2_ACCESS_KEY_ID>
+secret_access_key = <R2_SECRET>
+endpoint = https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+location_constraint = us-east-1
+acl = private
+
+# Replace placeholders before using. You can also run `rclone config` to interactively create remotes.
