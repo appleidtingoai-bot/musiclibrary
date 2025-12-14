@@ -13,7 +13,7 @@ namespace MusicAI.Orchestrator.Services
     public interface IQualityService
     {
         Task<List<QualityVersion>> GetAvailableQualitiesAsync(string s3Key);
-        Task<string> GetQualityUrlAsync(string s3Key, string quality, TimeSpan ttl);
+        Task<string> GetQualityUrlAsync(string s3Key, string quality, TimeSpan ttl, bool allowExplicit = false);
     }
 
     public class QualityService : IQualityService
@@ -21,12 +21,14 @@ namespace MusicAI.Orchestrator.Services
         private readonly IS3Service _s3Service;
         private readonly IStreamTokenService _tokenService;
         private readonly ILogger<QualityService> _logger;
+        private readonly MusicAI.Orchestrator.Data.MusicRepository? _musicRepo;
 
-        public QualityService(IS3Service s3Service, IStreamTokenService tokenService, ILogger<QualityService> logger)
+        public QualityService(IS3Service s3Service, IStreamTokenService tokenService, ILogger<QualityService> logger, MusicAI.Orchestrator.Data.MusicRepository? musicRepo = null)
         {
             _s3Service = s3Service;
             _tokenService = tokenService;
             _logger = logger;
+            _musicRepo = musicRepo;
         }
 
         public async Task<List<QualityVersion>> GetAvailableQualitiesAsync(string s3Key)
@@ -99,7 +101,7 @@ namespace MusicAI.Orchestrator.Services
             }
         }
 
-        public async Task<string> GetQualityUrlAsync(string s3Key, string quality, TimeSpan ttl)
+        public async Task<string> GetQualityUrlAsync(string s3Key, string quality, TimeSpan ttl, bool allowExplicit = false)
         {
             try
             {
@@ -107,8 +109,24 @@ namespace MusicAI.Orchestrator.Services
                 var selected = qualities.FirstOrDefault(q => q.Quality == quality) 
                             ?? qualities.First(); // Fallback to first available
 
-                var token = _tokenService.GenerateToken(selected.S3Key ?? string.Empty, ttl, false);
-                return $"{selected.S3Key}?t={System.Net.WebUtility.UrlEncode(token)}";
+                // If caller does not allow explicit content, prefer clean variant when available
+                string selectedKey = selected.S3Key ?? string.Empty;
+                try
+                {
+                    if (!allowExplicit && _musicRepo != null)
+                    {
+                        var maybe = await _musicRepo.GetByS3KeyAsync(s3Key);
+                        if (maybe != null && maybe.HasCleanVariant && !string.IsNullOrEmpty(maybe.CleanS3Key))
+                        {
+                            // Map the variant base to the clean manifest base if possible
+                            selectedKey = maybe.CleanS3Key!;
+                        }
+                    }
+                }
+                catch { }
+
+                var token = _tokenService.GenerateToken(selectedKey ?? string.Empty, ttl, allowExplicit);
+                return $"{selectedKey}?t={System.Net.WebUtility.UrlEncode(token)}";
             }
             catch (Exception ex)
             {

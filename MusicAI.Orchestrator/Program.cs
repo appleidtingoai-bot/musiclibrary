@@ -136,6 +136,8 @@ builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IStreamTokenService,
 // Spotify-like features: Queue management, Quality/Adaptive streaming, Audio processing
 builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IQueueService, MusicAI.Orchestrator.Services.QueueService>();
 builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IQualityService, MusicAI.Orchestrator.Services.QualityService>();
+// Transcription service (OpenAI Whisper) - required by audio processing
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.ITranscriptionService, MusicAI.Orchestrator.Services.OpenAITranscriptionService>();
 builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IAudioProcessingService, MusicAI.Orchestrator.Services.AudioProcessingService>();
 
 // Collaborative playlists repository

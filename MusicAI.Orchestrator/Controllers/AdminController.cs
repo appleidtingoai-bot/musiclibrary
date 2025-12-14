@@ -32,6 +32,7 @@ public class AdminController : ControllerBase
     private readonly AdminsRepository _adminsRepo;
     private readonly MusicAI.Orchestrator.Services.MusicCategorizationService _categorizer;
     private readonly MusicAI.Orchestrator.Data.MusicRepository? _musicRepo;
+    private readonly MusicAI.Orchestrator.Services.IAudioProcessingService? _audioService;
     private static readonly HttpClient _httpClient = new();
     private static readonly AsyncRetryPolicy _uploadPolicy = Policy
         .Handle<Exception>()
@@ -46,12 +47,14 @@ public class AdminController : ControllerBase
         IS3Service? s3 = null,
         AdminsRepository? adminsRepo = null,
         MusicAI.Orchestrator.Services.MusicCategorizationService? categorizer = null,
-        MusicAI.Orchestrator.Data.MusicRepository? musicRepo = null)
+        MusicAI.Orchestrator.Data.MusicRepository? musicRepo = null,
+        MusicAI.Orchestrator.Services.IAudioProcessingService? audioService = null)
     {
         _s3 = s3;
         _adminsRepo = adminsRepo ?? throw new ArgumentNullException(nameof(adminsRepo));
         _categorizer = categorizer ?? new MusicAI.Orchestrator.Services.MusicCategorizationService();
         _musicRepo = musicRepo;
+        _audioService = audioService;
     }
 
     public record AdminLoginRequest(string Email, string Password);
@@ -1086,6 +1089,29 @@ public class AdminController : ControllerBase
                                     UploadedAt = DateTime.UtcNow,
                                     IsActive = true
                                 };
+
+                                // If audio processing is available, generate HLS and clean variant now
+                                try
+                                {
+                                    if (_audioService != null)
+                                    {
+                                        var baseKey = key;
+                                        var lastDot = key.LastIndexOf('.');
+                                        if (lastDot > 0) baseKey = key.Substring(0, lastDot);
+                                        var targetFolder = $"{baseKey}-hls";
+                                        var hlsResult = await _audioService.ConvertToHlsAsync(key, targetFolder, produceCleanVariant: true);
+                                        if (hlsResult != null && hlsResult.Success)
+                                        {
+                                            track.HasCleanVariant = hlsResult.HasCleanVariant;
+                                            track.CleanS3Key = hlsResult.CleanManifestS3Key;
+                                        }
+                                    }
+                                }
+                                catch (Exception innerEx)
+                                {
+                                    Console.WriteLine($"Warning: HLS processing failed: {innerEx.Message}");
+                                }
+
                                 await _musicRepo.CreateAsync(track);
                             }
                             catch (Exception dbEx)
@@ -1101,8 +1127,9 @@ public class AdminController : ControllerBase
                         var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
                         if (!string.IsNullOrEmpty(cdn))
                         {
-                            hlsUrl = $"https://{cdn}/{key}";
-                            streamUrl = $"https://{cdn}/{key}";
+                            // Worker expects requests under /media/* -> map to R2 key. Emit CDN URL with /media/ prefix.
+                            hlsUrl = $"https://{cdn}/media/{key}";
+                            streamUrl = $"https://{cdn}/media/{key}";
                         }
                         else
                         {

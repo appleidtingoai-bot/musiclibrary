@@ -145,7 +145,8 @@ namespace MusicAI.Orchestrator.Controllers
                                 var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
                                 if (!string.IsNullOrEmpty(cdn))
                                 {
-                                    lines[i] = $"https://{cdn}/{referencedKey.TrimStart('/')}";
+                                    // Worker expects /media/<key> requests; emit CDN URL with /media/ prefix.
+                                    lines[i] = $"https://{cdn}/media/{referencedKey.TrimStart('/')}";
                                 }
                                 else if (CloudFrontCookieHelper.IsConfigured())
                                 {

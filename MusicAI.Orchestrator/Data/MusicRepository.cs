@@ -25,6 +25,8 @@ namespace MusicAI.Orchestrator.Data
         public DateTime UploadedAt { get; set; }
         public int PlayCount { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool HasCleanVariant { get; set; } = false;
+        public string? CleanS3Key { get; set; }
     }
 
     public class MusicRepository : IDisposable
@@ -59,13 +61,26 @@ namespace MusicAI.Orchestrator.Data
                     uploaded_by TEXT,
                     uploaded_at TIMESTAMP DEFAULT NOW(),
                     play_count INT DEFAULT 0,
-                    is_active BOOLEAN DEFAULT true
+                    is_active BOOLEAN DEFAULT true,
+                    has_clean_variant BOOLEAN DEFAULT false,
+                    clean_s3_key TEXT
                 );
                 
                 CREATE INDEX IF NOT EXISTS idx_music_genre ON music_tracks(genre);
                 CREATE INDEX IF NOT EXISTS idx_music_mood ON music_tracks(mood);
                 CREATE INDEX IF NOT EXISTS idx_music_active ON music_tracks(is_active);
             ");
+
+            // Ensure columns exist for older schema versions (non-destructive)
+            try
+            {
+                db.Execute("ALTER TABLE music_tracks ADD COLUMN IF NOT EXISTS has_clean_variant BOOLEAN DEFAULT false;");
+                db.Execute("ALTER TABLE music_tracks ADD COLUMN IF NOT EXISTS clean_s3_key TEXT;");
+            }
+            catch
+            {
+                // Ignore - if DB user lacks permission or columns already present, continue
+            }
         }
 
         public async Task<string> CreateAsync(MusicTrack track)
@@ -75,10 +90,10 @@ namespace MusicAI.Orchestrator.Data
             await db.ExecuteAsync(@"
                 INSERT INTO music_tracks 
                 (id, title, artist, album, genre, mood, s3_key, s3_bucket, duration_seconds, 
-                 file_size_bytes, content_type, uploaded_by, uploaded_at, play_count, is_active)
+                 file_size_bytes, content_type, uploaded_by, uploaded_at, play_count, is_active, has_clean_variant, clean_s3_key)
                 VALUES 
                 (@Id, @Title, @Artist, @Album, @Genre, @Mood, @S3Key, @S3Bucket, @DurationSeconds,
-                 @FileSizeBytes, @ContentType, @UploadedBy, @UploadedAt, @PlayCount, @IsActive)",
+                 @FileSizeBytes, @ContentType, @UploadedBy, @UploadedAt, @PlayCount, @IsActive, @HasCleanVariant, @CleanS3Key)",
                 track);
             return track.Id;
         }
@@ -90,6 +105,15 @@ namespace MusicAI.Orchestrator.Data
             return await db.QuerySingleOrDefaultAsync<MusicTrack>(
                 "SELECT * FROM music_tracks WHERE id = @Id AND is_active = true",
                 new { Id = id });
+        }
+
+        public async Task<MusicTrack?> GetByS3KeyAsync(string s3Key)
+        {
+            using var db = Connection();
+            db.Open();
+            return await db.QuerySingleOrDefaultAsync<MusicTrack>(
+                "SELECT * FROM music_tracks WHERE s3_key = @Key AND is_active = true",
+                new { Key = s3Key });
         }
 
         public async Task<List<MusicTrack>> GetByGenreAsync(string genre, int limit = 50)

@@ -23,15 +23,21 @@ namespace MusicAI.Orchestrator.Controllers
         private readonly IDistributedCache _cache;
         private readonly IStreamTokenService _tokenService;
         private readonly ILogger<DownloadsController> _logger;
+     private readonly MusicAI.Orchestrator.Data.MusicRepository? _musicRepo;
+     private readonly MusicAI.Orchestrator.Data.SubscriptionsRepository? _subsRepo;
 
         public DownloadsController(
             IDistributedCache cache,
             IStreamTokenService tokenService,
-            ILogger<DownloadsController> logger)
+            ILogger<DownloadsController> logger,
+            MusicAI.Orchestrator.Data.MusicRepository? musicRepo = null,
+            MusicAI.Orchestrator.Data.SubscriptionsRepository? subsRepo = null)
         {
             _cache = cache;
             _tokenService = tokenService;
             _logger = logger;
+            _musicRepo = musicRepo;
+            _subsRepo = subsRepo;
         }
 
         /// <summary>
@@ -48,14 +54,51 @@ namespace MusicAI.Orchestrator.Controllers
                 return Unauthorized();
             }
 
+            // Enforce subscription-only downloads
+            try
+            {
+                if (_subsRepo == null)
+                {
+                    _logger.LogWarning("SubscriptionsRepository not available - denying download request for user {UserId}", userId);
+                    return Forbid("Subscription required to download tracks");
+                }
+
+                var subscription = await _subsRepo.GetActiveSubscriptionAsync(userId);
+                if (subscription == null)
+                {
+                    _logger.LogInformation("User {UserId} attempted download without active subscription", userId);
+                    return Forbid("Subscription required to download tracks");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking subscription for user {UserId}", userId);
+                return StatusCode(500, new { error = "Unable to verify subscription status" });
+            }
+
             if (string.IsNullOrEmpty(request.S3Key))
             {
                 return BadRequest(new { error = "s3Key is required" });
             }
 
             // Generate long-lived token (24 hours) for offline download
-            var allowExplicit = User?.FindFirst("allow_explicit")?.Value != null && (User.FindFirst("allow_explicit")!.Value == "1" || User.FindFirst("allow_explicit")!.Value.Equals("true", StringComparison.OrdinalIgnoreCase));
-            var token = _tokenService.GenerateToken(request.S3Key ?? string.Empty, TimeSpan.FromHours(24), allowExplicit);
+            var allowExplicitClaim = User?.FindFirst("allow_explicit")?.Value;
+            var allowExplicit = allowExplicitClaim == "1" || string.Equals(allowExplicitClaim, "true", StringComparison.OrdinalIgnoreCase);
+            var effectiveKey = request.S3Key; // DownloadRequest.S3Key is initialized to empty string by DTO
+            try
+            {
+                if (!allowExplicit && _musicRepo != null && !string.IsNullOrEmpty(request.S3Key))
+                {
+                    var maybe = await _musicRepo.GetByS3KeyAsync(request.S3Key);
+                    if (maybe != null && maybe.HasCleanVariant && !string.IsNullOrEmpty(maybe.CleanS3Key))
+                    {
+                        effectiveKey = maybe.CleanS3Key ?? effectiveKey;
+                    }
+                }
+            }
+            catch { }
+
+            var token = _tokenService.GenerateToken(effectiveKey ?? string.Empty, TimeSpan.FromHours(24), allowExplicit);
             
             // Store download record
             var downloadId = Guid.NewGuid().ToString();
@@ -63,7 +106,7 @@ namespace MusicAI.Orchestrator.Controllers
             {
                 Id = downloadId,
                 UserId = userId,
-                S3Key = request.S3Key,
+                    S3Key = effectiveKey,
                 Title = request.Title ?? "Unknown",
                 Artist = request.Artist ?? "Unknown",
                 RequestedAt = DateTime.UtcNow,
@@ -88,7 +131,7 @@ namespace MusicAI.Orchestrator.Controllers
             return Ok(new
             {
                 downloadId,
-                downloadUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{request.S3Key}?t={System.Net.WebUtility.UrlEncode(token)}",
+                downloadUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{effectiveKey}?t={System.Net.WebUtility.UrlEncode(token)}",
                 expiresAt = downloadRecord.ExpiresAt,
                 validForHours = 24
             });

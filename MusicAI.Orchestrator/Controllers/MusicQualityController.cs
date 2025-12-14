@@ -34,7 +34,11 @@ namespace MusicAI.Orchestrator.Controllers
         {
             if (string.IsNullOrEmpty(s3Key)) return string.Empty;
             var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
-            if (!string.IsNullOrEmpty(cdn)) return $"https://{cdn}/{s3Key.TrimStart('/')}";
+            if (!string.IsNullOrEmpty(cdn))
+            {
+                // Worker expects /media/<key> requests; emit CDN URL with /media/ prefix.
+                return $"https://{cdn}/media/{s3Key.TrimStart('/')}";
+            }
             if (MusicAI.Infrastructure.Services.CloudFrontCookieSigner.IsConfigured)
             {
                 var cf = Environment.GetEnvironmentVariable("CLOUDFRONT_DOMAIN")?.TrimEnd('/');
@@ -91,7 +95,16 @@ namespace MusicAI.Orchestrator.Controllers
 
             try
             {
-                var qualityUrl = await _qualityService.GetQualityUrlAsync(s3Key, quality, TimeSpan.FromMinutes(ttlMinutes));
+                // Determine caller's explicit allowance from claims (if present)
+                var allowExplicit = false;
+                try
+                {
+                    var c = User?.FindFirst("allow_explicit")?.Value;
+                    if (!string.IsNullOrEmpty(c) && (c == "1" || c.Equals("true", StringComparison.OrdinalIgnoreCase))) allowExplicit = true;
+                }
+                catch { }
+
+                var qualityUrl = await _qualityService.GetQualityUrlAsync(s3Key, quality, TimeSpan.FromMinutes(ttlMinutes), allowExplicit);
 
                 string hlsUrl;
                 string streamUrl;

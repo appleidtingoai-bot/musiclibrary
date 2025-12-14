@@ -16,27 +16,50 @@ namespace MusicAI.Orchestrator.Services
     /// </summary>
     public interface IAudioProcessingService
     {
-        Task<HlsProcessingResult> ConvertToHlsAsync(string sourceS3Key, string targetFolder);
+        Task<HlsProcessingResult> ConvertToHlsAsync(string sourceS3Key, string targetFolder, bool produceCleanVariant = true);
         Task<List<QualityVersion>> GenerateMultipleQualitiesAsync(string sourceS3Key);
     }
 
     public class AudioProcessingService : IAudioProcessingService
     {
         private readonly IS3Service _s3Service;
+        private readonly ITranscriptionService _transcriptionService;
         private readonly ILogger<AudioProcessingService> _logger;
         private readonly string _tempPath;
 
-        public AudioProcessingService(IS3Service s3Service, ILogger<AudioProcessingService> logger)
+        // Default censor list; can be made configurable later
+        private readonly string[] _censorWords = new[] { "fuck", "fucking", "drunk", "alcohol", "gun", "guns" };
+
+        public AudioProcessingService(IS3Service s3Service, ITranscriptionService transcriptionService, ILogger<AudioProcessingService> logger)
         {
             _s3Service = s3Service;
+            _transcriptionService = transcriptionService;
             _logger = logger;
             _tempPath = Path.Combine(Path.GetTempPath(), "musicai-processing");
             
             if (!Directory.Exists(_tempPath))
                 Directory.CreateDirectory(_tempPath);
+
+            // Load censor word list from env var if provided (comma-separated), else use defaults
+            try
+            {
+                var env = Environment.GetEnvironmentVariable("CENSOR_WORDS");
+                if (!string.IsNullOrEmpty(env))
+                {
+                    _censorWords = env.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                       .Select(s => s.Trim().ToLowerInvariant())
+                                       .Where(s => !string.IsNullOrEmpty(s))
+                                       .ToArray();
+                    _logger.LogInformation("Loaded {Count} censor words from CENSOR_WORDS", _censorWords.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load CENSOR_WORDS env var, using defaults");
+            }
         }
 
-        public async Task<HlsProcessingResult> ConvertToHlsAsync(string sourceS3Key, string targetFolder)
+        public async Task<HlsProcessingResult> ConvertToHlsAsync(string sourceS3Key, string targetFolder, bool produceCleanVariant = true)
         {
             var processId = Guid.NewGuid().ToString("N").Substring(0, 8);
             var localInput = Path.Combine(_tempPath, $"{processId}_input.mp3");
@@ -56,53 +79,97 @@ namespace MusicAI.Orchestrator.Services
                     throw new Exception($"Failed to download {sourceS3Key} from S3");
                 }
 
-                // 2. Convert to HLS using FFmpeg
-                // Segment length: 10 seconds (Spotify uses 5-10s)
-                // Codec: AAC (web-compatible)
-                var ffmpegArgs = $"-i \"{localInput}\" -codec:a aac -b:a 192k -f hls -hls_time 10 -hls_list_size 0 -hls_segment_filename \"{segmentPattern}\" \"{localOutput}\"";
-                
-                _logger.LogInformation("Running FFmpeg: ffmpeg {Args}", ffmpegArgs);
-                
-                var exitCode = await RunFfmpegAsync(ffmpegArgs);
-                
-                if (exitCode != 0 || !File.Exists(localOutput))
-                {
-                    throw new Exception($"FFmpeg conversion failed with exit code {exitCode}");
-                }
+                // Optionally produce a clean (muted) variant using ASR -> ranges -> ffmpeg mute
+                string workingInput = localInput;
+                string? cleanManifestKey = null;
+                List<string> cleanSegmentKeys = new();
 
-                // 3. Upload manifest and segments to S3
-                var manifestS3Key = $"{targetFolder}/playlist.m3u8";
-                using (var manifestStream = File.OpenRead(localOutput))
+                if (produceCleanVariant)
                 {
-                    await _s3Service.UploadFileAsync(manifestS3Key, manifestStream, "application/vnd.apple.mpegurl");
-                }
-                
-                _logger.LogInformation("Uploaded HLS manifest to {ManifestKey}", manifestS3Key);
-
-                // Upload all .ts segments
-                var segmentFiles = Directory.GetFiles(_tempPath, $"{processId}_segment_*.ts");
-                var uploadedSegments = new List<string>();
-
-                foreach (var segmentFile in segmentFiles)
-                {
-                    var segmentName = Path.GetFileName(segmentFile);
-                    var segmentS3Key = $"{targetFolder}/{segmentName}";
-                    
-                    using (var segmentStream = File.OpenRead(segmentFile))
+                    try
                     {
-                        await _s3Service.UploadFileAsync(segmentS3Key, segmentStream, "video/MP2T");
+                        _logger.LogInformation("Transcribing {S3Key} for explicit content detection", sourceS3Key);
+                        var words = await _transcriptionService.TranscribeWithTimestamps(localInput);
+
+                        // Build censor ranges
+                        var ranges = new List<(double start, double end)>();
+                        foreach (var w in words)
+                        {
+                            if (string.IsNullOrWhiteSpace(w.Text)) continue;
+                            var normalized = w.Text.Trim().ToLowerInvariant();
+                            if (_censorWords.Contains(normalized))
+                            {
+                                var s = Math.Max(0, w.Start - 0.15);
+                                var e = w.End + 0.15;
+                                ranges.Add((s, e));
+                            }
+                        }
+
+                        // Merge overlapping ranges
+                        ranges = ranges.OrderBy(r => r.start).ToList();
+                        var merged = new List<(double start, double end)>();
+                        foreach (var r in ranges)
+                        {
+                            if (!merged.Any()) { merged.Add(r); continue; }
+                            var last = merged.Last();
+                            if (r.start <= last.end)
+                            {
+                                merged[merged.Count - 1] = (last.start, Math.Max(last.end, r.end));
+                            }
+                            else
+                            {
+                                merged.Add(r);
+                            }
+                        }
+
+                        if (merged.Any())
+                        {
+                            // Build ffmpeg volume filter expression
+                            var conditions = string.Join(",", merged.Select(m => $"between(t,{m.start.ToString(System.Globalization.CultureInfo.InvariantCulture)},{m.end.ToString(System.Globalization.CultureInfo.InvariantCulture)})"));
+                            var orExpr = merged.Count == 1 ? conditions : $"or({conditions})";
+                            var af = $"volume='if({orExpr},0,1)'";
+
+                            var localCleanInput = Path.Combine(_tempPath, $"{processId}_clean.mp3");
+                            var ffArgsClean = $"-i \"{localInput}\" -af \"{af}\" -c:a libmp3lame -b:a 192k \"{localCleanInput}\"";
+                            _logger.LogInformation("Running FFmpeg clean pass: ffmpeg {Args}", ffArgsClean);
+                            var exitClean = await RunFfmpegAsync(ffArgsClean);
+                            if (exitClean == 0 && File.Exists(localCleanInput))
+                            {
+                                // Generate HLS from clean input into a clean target folder suffix
+                                var cleanTarget = targetFolder.TrimEnd('/') + "-clean";
+                                var result = await GenerateHlsAndUploadAsync(localCleanInput, processId, cleanTarget);
+                                if (result.Success)
+                                {
+                                    cleanManifestKey = result.ManifestS3Key;
+                                    cleanSegmentKeys = result.SegmentKeys;
+                                }
+                            }
+                        }
                     }
-                    uploadedSegments.Add(segmentS3Key);
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to produce clean variant for {S3Key}", sourceS3Key);
+                    }
                 }
 
-                _logger.LogInformation("Uploaded {Count} HLS segments to S3", uploadedSegments.Count);
+                // Always produce original HLS as well
+                var originalResult = await GenerateHlsAndUploadAsync(localInput, processId, targetFolder);
+                if (!originalResult.Success)
+                {
+                    throw new Exception(originalResult.Error ?? "FFmpeg conversion failed for original variant");
+                }
+
+                _logger.LogInformation("Uploaded original HLS manifest to {ManifestKey}", originalResult.ManifestS3Key);
 
                 return new HlsProcessingResult
                 {
                     Success = true,
-                    ManifestS3Key = manifestS3Key,
-                    SegmentKeys = uploadedSegments,
-                    SegmentCount = uploadedSegments.Count
+                    ManifestS3Key = originalResult.ManifestS3Key,
+                    SegmentKeys = originalResult.SegmentKeys,
+                    SegmentCount = originalResult.SegmentCount,
+                    HasCleanVariant = !string.IsNullOrEmpty(cleanManifestKey),
+                    CleanManifestS3Key = cleanManifestKey ?? string.Empty,
+                    CleanSegmentKeys = cleanSegmentKeys
                 };
             }
             catch (Exception ex)
@@ -232,6 +299,51 @@ namespace MusicAI.Orchestrator.Services
                 _logger.LogWarning(ex, "Failed to cleanup temp files for process {ProcessId}", processId);
             }
         }
+
+        private async Task<HlsProcessingResult> GenerateHlsAndUploadAsync(string inputPath, string processId, string targetFolder)
+        {
+            var localOutput = Path.Combine(_tempPath, $"{processId}_output.m3u8");
+            var segmentPattern = Path.Combine(_tempPath, $"{processId}_segment_%03d.ts");
+
+            // Ensure old files with same pattern are removed
+            try { foreach (var f in Directory.GetFiles(_tempPath, $"{processId}_*") ) { try { File.Delete(f); } catch {} } } catch {}
+
+            var ffmpegArgs = $"-i \"{inputPath}\" -codec:a aac -b:a 192k -f hls -hls_time 10 -hls_list_size 0 -hls_segment_filename \"{segmentPattern}\" \"{localOutput}\"";
+            _logger.LogInformation("Running FFmpeg for HLS: ffmpeg {Args}", ffmpegArgs);
+            var exit = await RunFfmpegAsync(ffmpegArgs);
+            if (exit != 0 || !File.Exists(localOutput))
+            {
+                return new HlsProcessingResult { Success = false, Error = $"FFmpeg failed with exit {exit}" };
+            }
+
+            // Upload manifest
+            var manifestS3Key = $"{targetFolder}/playlist.m3u8";
+            using (var manifestStream = File.OpenRead(localOutput))
+            {
+                await _s3Service.UploadFileAsync(manifestS3Key, manifestStream, "application/vnd.apple.mpegurl");
+            }
+
+            var segmentFiles = Directory.GetFiles(_tempPath, $"{processId}_segment_*.ts");
+            var uploadedSegments = new List<string>();
+            foreach (var segmentFile in segmentFiles)
+            {
+                var segmentName = Path.GetFileName(segmentFile);
+                var segmentS3Key = $"{targetFolder}/{segmentName}";
+                using (var segmentStream = File.OpenRead(segmentFile))
+                {
+                    await _s3Service.UploadFileAsync(segmentS3Key, segmentStream, "video/MP2T");
+                }
+                uploadedSegments.Add(segmentS3Key);
+            }
+
+            return new HlsProcessingResult
+            {
+                Success = true,
+                ManifestS3Key = manifestS3Key,
+                SegmentKeys = uploadedSegments,
+                SegmentCount = uploadedSegments.Count
+            };
+        }
     }
 
     public class HlsProcessingResult
@@ -240,6 +352,9 @@ namespace MusicAI.Orchestrator.Services
         public string ManifestS3Key { get; set; } = string.Empty;
         public List<string> SegmentKeys { get; set; } = new();
         public int SegmentCount { get; set; }
+        public bool HasCleanVariant { get; set; }
+        public string CleanManifestS3Key { get; set; } = string.Empty;
+        public List<string> CleanSegmentKeys { get; set; } = new();
         public string? Error { get; set; }
     }
 
