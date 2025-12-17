@@ -741,7 +741,8 @@ builder.Services.AddHostedService<MusicAI.Orchestrator.Services.IpMonitorService
 
 // Background signer/assembler service and circuit breaker to protect heavy operations
 builder.Services.AddSingleton<MusicAI.Infrastructure.Services.SimpleCircuitBreaker>();
-builder.Services.AddHostedService<MusicAI.Orchestrator.Services.BackgroundSignerService>();
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.BackgroundSignerService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<MusicAI.Orchestrator.Services.BackgroundSignerService>());
 
 // TosinAgent (Autonomous AI Agent)
 try

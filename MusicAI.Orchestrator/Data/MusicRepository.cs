@@ -187,7 +187,8 @@ namespace MusicAI.Orchestrator.Data
             db.Open();
             var results = await db.QueryAsync<MusicTrack>(@"
                 SELECT * FROM music_tracks 
-                WHERE uploaded_by = @Uploader AND is_active = true 
+                WHERE (uploaded_by = @Uploader OR uploaded_by IN (SELECT email FROM users WHERE id = @Uploader))
+                  AND is_active = true 
                 ORDER BY uploaded_at DESC 
                 OFFSET @Offset LIMIT @Limit",
                 new { Uploader = uploaderId, Offset = offset, Limit = limit });

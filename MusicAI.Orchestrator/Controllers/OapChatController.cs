@@ -29,6 +29,7 @@ namespace MusicAI.Orchestrator.Controllers
         private readonly IStreamTokenService _tokenService;
         private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache? _cache;
         private readonly SimpleCircuitBreaker? _breaker;
+        private readonly BackgroundSignerService _bgSigner;
 
         public OapChatController(
             List<PersonaConfig> personas,
@@ -39,6 +40,7 @@ namespace MusicAI.Orchestrator.Controllers
             IStreamTokenService tokenService,
             Microsoft.Extensions.Caching.Distributed.IDistributedCache? cache,
             SimpleCircuitBreaker? breaker,
+            BackgroundSignerService bgSigner,
             MusicRepository? musicRepo = null,
             IPlaylistsRepository? playlistsRepo = null)
         {
@@ -52,6 +54,7 @@ namespace MusicAI.Orchestrator.Controllers
             _tokenService = tokenService;
             _cache = cache;
             _breaker = breaker;
+            _bgSigner = bgSigner;
         }
 
         [AllowAnonymous]
@@ -272,7 +275,20 @@ namespace MusicAI.Orchestrator.Controllers
                 Response.Headers["Content-Disposition"] = "inline";
                 return Content(manifest, "application/vnd.apple.mpegurl");
             }
-            var tracks = playlist.Select(t => new { id = t.Id, title = t.Title, artist = t.Artist, s3Key = t.S3Key, duration = t.DurationSeconds, hlsUrl = GetCdnOrOriginUrl(t.S3Key, string.Empty) }).ToList();
+            // Presign first track to improve startup latency (non-blocking fallback)
+            string? firstPresigned = null;
+            try
+            {
+                var first = playlist.FirstOrDefault(p => !string.IsNullOrEmpty(p.S3Key));
+                if (first != null)
+                {
+                    var pres = await _bgSigner.EnqueueAsync(new MusicAI.Orchestrator.Services.BackgroundSignerService.PresignRequest { Key = first.S3Key, ExpiryMinutes = 60 });
+                    if (!string.IsNullOrEmpty(pres.Url)) firstPresigned = pres.Url;
+                }
+            }
+            catch { }
+
+            var tracks = playlist.Select(t => new { id = t.Id, title = t.Title, artist = t.Artist, s3Key = t.S3Key, duration = t.DurationSeconds, hlsUrl = (t == playlist.FirstOrDefault() && !string.IsNullOrEmpty(firstPresigned)) ? firstPresigned : GetCdnOrOriginUrl(t.S3Key, string.Empty) }).ToList();
             // Log missing S3Key for debugging
             foreach (var t in playlist) {
                 if (string.IsNullOrEmpty(t.S3Key)) {
