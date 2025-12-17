@@ -1,3 +1,20 @@
+Deployment and usage notes for the Cloudflare Worker proxying S3 via presigned URLs
+
+Setup
+- Install Wrangler: `npm i -g wrangler`
+- Open `wrangler.toml` and set `account_id`, `route`, and `ORCHESTRATOR_URL`.
+- Ensure the Worker has these secrets bound (set in Cloudflare dashboard):
+  - `EDGE_SIGN_KEY` (HMAC key used by Worker to sign/verify Edge-Play cookie)
+  - `JWT_SECRET` (optional, if you want the Worker to validate JWTs)
+
+Deploy
+```
+wrangler publish --env production
+```
+
+Notes
+- The Worker expects your Orchestrator to expose `/api/media/presign?key=...` which returns JSON: `{ url, contentLength, contentType, etag }`.
+- The Worker will cache small objects at the edge and serve Range requests from cache where possible to reduce S3 egress.
 Cloudflare R2 + Worker scaffold
 
 Files provided:

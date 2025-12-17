@@ -50,7 +50,7 @@ namespace MusicAI.Orchestrator.Controllers
 
             // Enforce Origin whitelist for HLS requests to prevent direct downloads
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
-            if (string.IsNullOrEmpty(origin) || !(origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+            if (string.IsNullOrEmpty(origin) || !IsOriginAllowed(origin))
             {
                 _logger.LogWarning("Blocked HLS request without allowed Origin: {Origin}", origin);
                 return StatusCode(403, new { error = "Origin not allowed" });
@@ -224,7 +224,7 @@ namespace MusicAI.Orchestrator.Controllers
 
             // Require an Origin header from allowed origins to reduce direct download abuse
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
-            if (string.IsNullOrEmpty(origin) || !(origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+            if (string.IsNullOrEmpty(origin) || !IsOriginAllowed(origin))
             {
                 _logger.LogWarning("Blocked stream request without allowed Origin: {Origin}", origin);
                 return StatusCode(403, new { error = "Origin not allowed" });
@@ -346,7 +346,7 @@ namespace MusicAI.Orchestrator.Controllers
                 }
 
                 // Enable CORS for browser playback: echo Origin only when it's an allowed origin
-                if (!string.IsNullOrEmpty(origin) && (origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+                if (!string.IsNullOrEmpty(origin) && IsOriginAllowed(origin))
                 {
                     Response.Headers["Access-Control-Allow-Origin"] = origin;
                     Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
@@ -395,13 +395,34 @@ namespace MusicAI.Orchestrator.Controllers
         public IActionResult Options()
         {
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
-            if (!string.IsNullOrEmpty(origin) && (origin == "http://localhost:3000" || origin == "https://tingoradio.ai" || origin == "https://tingoradiomusiclibrary.tingoai.ai"))
+            if (!string.IsNullOrEmpty(origin) && IsOriginAllowed(origin))
             {
                 Response.Headers["Access-Control-Allow-Origin"] = origin;
                 Response.Headers["Access-Control-Allow-Methods"] = "GET, OPTIONS";
                 Response.Headers["Access-Control-Allow-Headers"] = "Range, Content-Type";
             }
             return Ok();
+        }
+
+        private static bool IsOriginAllowed(string origin)
+        {
+            try
+            {
+                var env = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+                if (!string.IsNullOrEmpty(env))
+                {
+                    var parts = env.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                    return parts.Any(p => string.Equals(p, origin, StringComparison.OrdinalIgnoreCase));
+                }
+
+                // Fallback defaults
+                var defaults = new[] { "http://localhost:3000", "https://tingoradio.ai", "https://tingoradiomusiclibrary.tingoai.ai" };
+                return defaults.Any(d => string.Equals(d, origin, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         // Reflection-based helper to safely interact with an optional CloudFrontCookieSigner type

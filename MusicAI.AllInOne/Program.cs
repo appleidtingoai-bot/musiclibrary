@@ -1,10 +1,44 @@
 using System.Reflection;
 using System.Text;
+using System.IO;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MusicAI.Common.Models;
+
+// Load .env into process environment so configuration/builder picks it up automatically.
+// Searches common locations and stops at the first .env found.
+try
+{
+    var envCandidates = new[] {
+        Path.Combine(AppContext.BaseDirectory, ".env"),
+        Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".env")
+    };
+    foreach (var p in envCandidates)
+    {
+        if (File.Exists(p))
+        {
+            foreach (var raw in File.ReadAllLines(p))
+            {
+                var line = raw?.Trim();
+                if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue;
+                var idx = line.IndexOf('=');
+                if (idx <= 0) continue;
+                var key = line.Substring(0, idx).Trim();
+                var val = line.Substring(idx + 1).Trim();
+                Environment.SetEnvironmentVariable(key, val);
+            }
+            Console.WriteLine($"✓ Loaded .env overrides from {p}");
+            break;
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Warning loading .env: {ex.Message}");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 

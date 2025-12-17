@@ -17,25 +17,33 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 using MusicAI.Orchestrator.Middleware;
 
 // Load local .env into environment variables so running in local dev picks up AWS/Postgres keys
-// Check multiple locations: output directory, current directory, and parent directory (solution root)
+// Prefer the repository .env by searching upward from the current working directory first,
+// then fall back to the app base directory. Values from the discovered .env will override
+// any existing process environment variables so the repo .env is used directly.
 string? dotenvPath = null;
-var possiblePaths = new[]
-{
-    Path.Combine(AppContext.BaseDirectory, ".env"),
-    Path.Combine(Directory.GetCurrentDirectory(), ".env"),
-    Path.Combine(Directory.GetCurrentDirectory(), "..", ".env")
-};
 
-foreach (var path in possiblePaths)
+string FindDotenvUpwards(string startDir)
 {
-    if (File.Exists(path))
+    var dir = new DirectoryInfo(startDir);
+    while (dir != null)
     {
-        dotenvPath = Path.GetFullPath(path);
-        break;
+        var candidate = Path.Combine(dir.FullName, ".env");
+        if (File.Exists(candidate)) return candidate;
+        dir = dir.Parent;
     }
+    return string.Empty;
 }
 
-if (dotenvPath != null)
+// First search upward from the current working directory (covers 'dotnet run' executed at repo root)
+dotenvPath = FindDotenvUpwards(Directory.GetCurrentDirectory());
+
+// If nothing found, search upward from the app base directory (covers published exe runs)
+if (string.IsNullOrEmpty(dotenvPath))
+{
+    dotenvPath = FindDotenvUpwards(AppContext.BaseDirectory);
+}
+
+if (!string.IsNullOrEmpty(dotenvPath))
 {
     try
     {
@@ -52,11 +60,8 @@ if (dotenvPath != null)
             {
                 value = value.Substring(1, value.Length - 2);
             }
-            // Only set if not already present in environment
-            if (Environment.GetEnvironmentVariable(key) == null)
-            {
-                Environment.SetEnvironmentVariable(key, value);
-            }
+            // Override any existing environment variable so the repo .env is authoritative
+            Environment.SetEnvironmentVariable(key, value);
         }
         Console.WriteLine($"✓ Loaded environment overrides from {dotenvPath}");
     }
@@ -72,6 +77,66 @@ else
 
 // Create the application builder
 var builder = WebApplication.CreateBuilder(args);
+
+// Optionally apply SQL migrations on startup. Enable by setting
+// environment variable RUN_DB_MIGRATIONS_ON_STARTUP=true (or config RunMigrationsOnStartup=true).
+try
+{
+    var runFlag = Environment.GetEnvironmentVariable("RUN_DB_MIGRATIONS_ON_STARTUP") ?? builder.Configuration["RunMigrationsOnStartup"];
+    if (!string.IsNullOrEmpty(runFlag) && (runFlag == "1" || runFlag.Equals("true", StringComparison.OrdinalIgnoreCase)))
+    {
+        try
+        {
+                // Try several likely locations for the migrations folder: current dir, base dir, and parents
+                string? FindMigrationsFolder()
+                {
+                    string[] starts = new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory };
+                    foreach (var start in starts)
+                    {
+                        try
+                        {
+                            var dir = new DirectoryInfo(start);
+                            while (dir != null)
+                            {
+                                    var candidate = Path.Combine(dir.FullName, "scripts", "db_migrations");
+                                    Console.WriteLine($"→ Checking for migrations at: {candidate}");
+                                    if (Directory.Exists(candidate)) return candidate;
+                                dir = dir.Parent;
+                            }
+                        }
+                        catch { }
+                    }
+                    return null;
+                }
+
+                var migrationsPath = FindMigrationsFolder();
+
+                if (!string.IsNullOrEmpty(migrationsPath) && Directory.Exists(migrationsPath))
+                {
+                Console.WriteLine($"→ Running DB migrations from: {migrationsPath}");
+                var files = Directory.GetFiles(migrationsPath, "*.sql").OrderBy(f => f).ToArray();
+                if (files.Length == 0) Console.WriteLine("→ No .sql migration files found");
+
+                // You need to define pgConn before this block or move this block after pgConn is defined.
+                // For now, let's move this block after pgConn is defined.
+            }
+                else
+                {
+                    Console.WriteLine("→ Migrations folder not found in known locations");
+                }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Migration runner encountered an error: {ex.GetType().Name}: {ex.Message}");
+            // Do not block startup on migration failure if you prefer; currently rethrow to surface the issue.
+            throw;
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Migration check failed: {ex.Message}");
+}
 
 // Configure distributed cache FIRST (Redis for production, in-memory for development)
 var redisConnection = Environment.GetEnvironmentVariable("REDIS_CONNECTION")
@@ -317,8 +382,8 @@ builder.Services.AddAuthentication(options =>
 .AddCookie(options =>
 {
     options.LoginPath = "/api/admin/login";
-    options.Events.OnRedirectToLogin = context =>
-    {
+            options.Events.OnRedirectToLogin = context =>
+            {
         context.Response.StatusCode = 401;
         return Task.CompletedTask;
     };
@@ -438,6 +503,64 @@ var pgConn = builder.Configuration.GetConnectionString("Default")
              ?? Environment.GetEnvironmentVariable("POSTGRES_URL")
              ?? Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT")
              ?? "Host=localhost;Username=postgres;Password=postgres;Database=musicai";
+
+// Optionally apply SQL migrations on startup. Enable by setting
+// environment variable RUN_DB_MIGRATIONS_ON_STARTUP=true (or config RunMigrationsOnStartup=true).
+try
+{
+    var runFlag = Environment.GetEnvironmentVariable("RUN_DB_MIGRATIONS_ON_STARTUP") ?? builder.Configuration["RunMigrationsOnStartup"];
+    if (!string.IsNullOrEmpty(runFlag) && (runFlag == "1" || runFlag.Equals("true", StringComparison.OrdinalIgnoreCase)))
+    {
+        try
+        {
+            var migrationsPath = Path.Combine(Directory.GetCurrentDirectory(), "scripts", "db_migrations");
+            if (!Directory.Exists(migrationsPath))
+            {
+                migrationsPath = Path.Combine(AppContext.BaseDirectory, "scripts", "db_migrations");
+            }
+
+            if (Directory.Exists(migrationsPath))
+            {
+                Console.WriteLine($"→ Running DB migrations from: {migrationsPath}");
+                var files = Directory.GetFiles(migrationsPath, "*.sql").OrderBy(f => f).ToArray();
+                if (files.Length == 0) Console.WriteLine("→ No .sql migration files found");
+
+                using var conn = new Npgsql.NpgsqlConnection(pgConn);
+                conn.Open();
+                foreach (var f in files)
+                {
+                    var sql = File.ReadAllText(f);
+                    try
+                    {
+                        using var cmd = new Npgsql.NpgsqlCommand(sql, conn);
+                        cmd.ExecuteNonQuery();
+                        Console.WriteLine($"✓ Applied migration: {Path.GetFileName(f)}");
+                    }
+                    catch (Exception mex)
+                    {
+                        Console.WriteLine($"✗ Migration failed ({Path.GetFileName(f)}): {mex.GetType().Name}: {mex.Message}");
+                        throw;
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("→ Migrations folder not found in known locations");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Migration runner encountered an error: {ex.GetType().Name}: {ex.Message}");
+            // Do not block startup on migration failure if you prefer; currently rethrow to surface the issue.
+            throw;
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Migration check failed: {ex.Message}");
+}
+
 try
 {
     builder.Services.AddSingleton(new MusicAI.Orchestrator.Data.UsersRepository(pgConn));
@@ -445,6 +568,17 @@ try
 catch (Exception ex)
 {
     System.Console.WriteLine($"Warning: could not register UsersRepository: {ex.Message}");
+}
+
+// Register refresh tokens repository for API-client refresh flow
+try
+{
+    builder.Services.AddSingleton(new MusicAI.Orchestrator.Data.RefreshTokensRepository(pgConn));
+    System.Console.WriteLine("RefreshTokensRepository registered");
+}
+catch (Exception ex)
+{
+    System.Console.WriteLine($"Warning: could not register RefreshTokensRepository: {ex.Message}");
 }
 
 // AWS services are optional for demo — register dummy implementations if config is missing
@@ -547,6 +681,21 @@ catch (Exception ex)
     // Don't register database repositories - OAP will use S3 fallback
 }
 
+// Register payments repository and services
+try
+{
+    builder.Services.AddSingleton(new MusicAI.Orchestrator.Data.PaymentsRepository(pgConn));
+    builder.Services.AddSingleton(new MusicAI.Orchestrator.Data.PaymentMethodsRepository(pgConn));
+    builder.Services.AddSingleton<MusicAI.Orchestrator.Services.PaymentService>();
+        builder.Services.AddHostedService<MusicAI.Orchestrator.Services.PaymentVerificationService>();
+        builder.Services.AddHostedService<MusicAI.Orchestrator.Services.RebillService>();
+    System.Console.WriteLine("Payments service registered");
+}
+catch (Exception ex)
+{
+    System.Console.WriteLine($"Warning: Could not register payments services: {ex.Message}");
+}
+
 // Music Categorization Service (intelligent auto-organization)
 try
 {
@@ -585,6 +734,10 @@ builder.Services.AddSingleton<MusicAI.Orchestrator.Services.NewsService>();
 builder.Services.AddSingleton<MusicAI.Orchestrator.Services.NewsReadingService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<MusicAI.Orchestrator.Services.NewsReadingService>());
 System.Console.WriteLine("News reading service registered - Tosin will read news every hour");
+
+// IP intelligence and monitoring services
+builder.Services.AddSingleton<MusicAI.Orchestrator.Services.IpCheckerService>();
+builder.Services.AddHostedService<MusicAI.Orchestrator.Services.IpMonitorService>();
 
 // Background signer/assembler service and circuit breaker to protect heavy operations
 builder.Services.AddSingleton<MusicAI.Infrastructure.Services.SimpleCircuitBreaker>();
@@ -744,6 +897,11 @@ app.UseSwaggerUI(c =>
 app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
 
 // Ensure routing and controllers are mapped
+// Enable authentication/authorization middleware if credentials are configured.
+// This restores per-endpoint [Authorize] enforcement and allows admin sign-in flows to work.
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
 
 // Enforce allowed domains (Origin/Referer/Host): only tingoradio.ai
@@ -755,11 +913,19 @@ app.Use(async (context, next) =>
         "www.tingoradio.ai",
         "tingoradiomusiclibrary.tingoai.ai",
         "localhost",
+        "localhost:3000",
         // Allow direct IP access on dev machines (useful when curling 127.0.0.1)
         "127.0.0.1",
         // IPv6 loopback
         "::1"
     };
+
+    // In development allow all hosts to simplify local testing (curl, dev frontends)
+    if (app.Environment.IsDevelopment())
+    {
+        await next();
+        return;
+    }
 
     // Allow preflight
     if (context.Request.Method == "OPTIONS")
@@ -806,6 +972,53 @@ catch { }
 
 try
 {
+    // Lightweight connectivity test for S3/R2 to give a clear startup message
+    try
+    {
+        var s3svc = app.Services.GetService<MusicAI.Infrastructure.Services.IS3Service>();
+        if (s3svc == null)
+        {
+            Console.WriteLine("i: IS3Service not configured - skipping S3/R2 connectivity test.");
+        }
+        else if (string.Equals(Environment.GetEnvironmentVariable("SKIP_S3_STARTUP_TEST"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("i: SKIP_S3_STARTUP_TEST=true, skipping S3/R2 startup connectivity test.");
+        }
+        else
+        {
+            try
+            {
+                Console.WriteLine("→ Testing S3/R2 connectivity...");
+                var objs = s3svc.ListObjectsAsync("").GetAwaiter().GetResult();
+                var count = objs?.Count() ?? 0;
+                Console.WriteLine($"✓ S3/R2 connectivity OK - {count} objects listed (up to 1000).\n");
+            }
+            catch (Amazon.S3.AmazonS3Exception s3ex)
+            {
+                // Compact, actionable logging for common auth/account errors
+                if (string.Equals(s3ex.ErrorCode, "InvalidAccessKeyId", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"✗ S3/R2 connectivity error: InvalidAccessKeyId - the configured AWS/R2 access key was rejected. Check your AWS__AccessKey, AWS__SecretKey, and that the access key belongs to the account for the configured AWS__S3Endpoint.");
+                    Console.WriteLine($"  StatusCode: {s3ex.StatusCode}  RequestId: {s3ex.RequestId}");
+                }
+                else
+                {
+                    Console.WriteLine($"✗ S3/R2 connectivity error: {s3ex.GetType().Name}: {s3ex.Message}");
+                    Console.WriteLine($"  StatusCode: {s3ex.StatusCode}  ErrorCode: {s3ex.ErrorCode}  RequestId: {s3ex.RequestId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"✗ S3/R2 connectivity error: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"✗ Unexpected error during S3/R2 connectivity test: {ex.GetType().Name}: {ex.Message}");
+        if (ex.InnerException != null) Console.WriteLine($"Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+    }
+
     app.Run();
 }
 catch (Exception ex)

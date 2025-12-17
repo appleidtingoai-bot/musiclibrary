@@ -29,7 +29,9 @@ namespace Platform.Services
 
             var key = $"tts/{persona}/{Guid.NewGuid()}.wav";
             using var ms = new MemoryStream(audio);
-            await _s3.UploadFileAsync(key, ms, "audio/wav");
+            await using var uploadStream = new MemoryStream(ms.ToArray());
+            uploadStream.Position = 0;
+            await _s3.UploadFileAsync(key, uploadStream, "audio/wav");
 
             return $"https://{_cloudfront}/{key}";
         }

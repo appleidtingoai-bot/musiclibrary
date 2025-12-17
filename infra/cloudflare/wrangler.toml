@@ -1,3 +1,14 @@
+name = "musicai-audio-proxy"
+main = "worker-r2.js"
+compatibility_date = "2025-12-16"
+type = "javascript"
+
+# Fill these before publishing
+account_id = "your-cloudflare-account-id"
+route = "audio.yourdomain.com/*"
+
+[vars]
+ORCHESTRATOR_URL = "https://api.yourdomain.com"
 name = "musicai-cdn-worker"
 compatibility_date = "2025-12-11"
 account_id = "6a94a1258e8b853bae5b2ecbe5dfd64a"

@@ -19,19 +19,21 @@ public class OnboardingController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IServiceProvider _sp;
     private readonly UsersRepository _usersRepo;
+    private readonly RefreshTokensRepository _refreshRepo;
 
-    public OnboardingController(IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IServiceProvider sp, UsersRepository usersRepo)
+    public OnboardingController(IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IServiceProvider sp, UsersRepository usersRepo, RefreshTokensRepository refreshRepo)
     {
         _httpAccessor = httpContextAccessor;
         _configuration = configuration;
         _sp = sp;
         _usersRepo = usersRepo;
+        _refreshRepo = refreshRepo;
         HttpContextAccessorHolder.HttpContextAccessor = httpContextAccessor;
     }
 
-    private const int TrialCredits = 150; // trial credits for new users (7-day trial implied)
+    private const int TrialCredits = 150; // trial credits for new users
 
-    public record RegisterRequest(string Email, string Password, string? Country = null);
+    public record RegisterRequest(string Email, string Password, string? Country = null, string? FirstName = null, string? LastName = null, string? Phone = null);
     public record LoginRequest(string Email, string Password);
     public record LocationRequest(string Country);
 
@@ -64,12 +66,17 @@ public class OnboardingController : ControllerBase
         {
             Id = id,
             Email = req.Email,
+            FirstName = req.FirstName ?? string.Empty,
+            LastName = req.LastName ?? string.Empty,
+            Phone = req.Phone ?? string.Empty,
             PasswordHash = hash,
             IsSubscribed = false,
             Credits = TrialCredits,
             Country = req.Country ?? "",
             IpAddress = ip,
-            TrialExpires = DateTime.UtcNow.AddDays(1) // Changed to 1 day trial
+            TrialExpires = DateTime.UtcNow.AddDays(1), // kept short trial field
+            CreditsExpiry = DateTime.UtcNow.AddDays(14), // signup credits valid for two weeks
+            SavePaymentConsent = false
         };
         try
         {
@@ -84,6 +91,27 @@ public class OnboardingController : ControllerBase
 
         var role = "User";
         var (token, expires) = CreateJwtToken(id, role, isSubscribed: user.IsSubscribed);
+
+        // Issue a long-lived refresh token for API clients and browsers
+        string? refreshToken = null;
+        DateTime? refreshExpiry = null;
+        try
+        {
+            refreshToken = GenerateRefreshToken();
+            refreshExpiry = DateTime.UtcNow.AddDays(30);
+            _refreshRepo?.Create(refreshToken, id, refreshExpiry.Value);
+            var refreshCookie = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
+                Path = "/",
+                Expires = refreshExpiry
+            };
+            Response.Cookies.Append("MusicAI.Refresh", refreshToken, refreshCookie);
+        }
+        catch { }
 
         // Set auth cookie (contains JWT) for browser-based flows
         var cookieOptions = new CookieOptions
@@ -100,7 +128,7 @@ public class OnboardingController : ControllerBase
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 
-        return CreatedAtAction(nameof(Me), new { id }, new { userId = id, token, role, credits = user.Credits, trialExpires = user.TrialExpires });
+        return CreatedAtAction(nameof(Me), new { id }, new { userId = id, token, role, credits = user.Credits, trialExpires = user.TrialExpires, refreshToken, refreshExpires = refreshExpiry });
     }
 
     [AllowAnonymous]
@@ -124,7 +152,28 @@ public class OnboardingController : ControllerBase
         };
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 
-        return Ok(new { userId = u.Id, token, role, credits = u.Credits, isSubscribed = u.IsSubscribed });
+        // Create and persist refresh token for API clients
+        string? loginRefresh = null;
+        DateTime? loginRefreshExpiry = null;
+        try
+        {
+            loginRefresh = GenerateRefreshToken();
+            loginRefreshExpiry = DateTime.UtcNow.AddDays(30);
+            _refreshRepo?.Create(loginRefresh, u.Id, loginRefreshExpiry.Value);
+            var refreshCookie = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.None,
+                Expires = loginRefreshExpiry,
+                Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
+                Path = "/"
+            };
+            Response.Cookies.Append("MusicAI.Refresh", loginRefresh, refreshCookie);
+        }
+        catch { }
+
+        return Ok(new { userId = u.Id, token, role, credits = u.Credits, isSubscribed = u.IsSubscribed, refreshToken = loginRefresh, refreshExpires = loginRefreshExpiry });
     }
 
     [Authorize]
@@ -247,6 +296,62 @@ public class OnboardingController : ControllerBase
         }
     }
 
+    public record RefreshExchangeRequest(string? refreshToken);
+
+    /// <summary>
+    /// Exchange a long-lived refresh token for a new access token. Accepts token via body or HttpOnly cookie "MusicAI.Refresh".
+    /// Rotates the refresh token on successful exchange.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("token/refresh")]
+    public IActionResult ExchangeRefreshToken([FromBody] RefreshExchangeRequest req)
+    {
+        try
+        {
+            var incoming = req?.refreshToken;
+            if (string.IsNullOrEmpty(incoming))
+            {
+                Request.Cookies.TryGetValue("MusicAI.Refresh", out incoming);
+            }
+
+            if (string.IsNullOrEmpty(incoming)) return Unauthorized(new { error = "Refresh token missing" });
+
+            var rec = _refreshRepo?.GetByToken(incoming);
+            if (rec == null) return Unauthorized(new { error = "Invalid refresh token" });
+            if (rec.Revoked) return Unauthorized(new { error = "Refresh token revoked" });
+            if (rec.ExpiresAt < DateTime.UtcNow) return Unauthorized(new { error = "Refresh token expired" });
+
+            var user = _usersRepo.GetById(rec.UserId);
+            if (user == null) return Unauthorized(new { error = "User not found" });
+
+            // Rotate: revoke old, create new
+            try { _refreshRepo.Revoke(incoming); } catch { }
+            var newRefresh = GenerateRefreshToken();
+            var newExpiry = DateTime.UtcNow.AddDays(30);
+            try { _refreshRepo.Create(newRefresh, user.Id, newExpiry); } catch { }
+
+            var (newToken, expires) = CreateJwtToken(user.Id, "User", isSubscribed: user.IsSubscribed);
+
+            // Set cookie for browsers
+            var refreshCookie = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.None,
+                Expires = newExpiry,
+                Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
+                Path = "/"
+            };
+            Response.Cookies.Append("MusicAI.Refresh", newRefresh, refreshCookie);
+
+            return Ok(new { token = newToken, expires, refreshToken = newRefresh, refreshExpires = newExpiry });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Refresh exchange failed", detail = ex.Message });
+        }
+    }
+
     /// <summary>
     /// Logout - clears user authentication cookie
     /// </summary>
@@ -255,6 +360,12 @@ public class OnboardingController : ControllerBase
     public IActionResult Logout()
     {
         Response.Cookies.Delete("MusicAI.Auth");
+        // Revoke refresh token if present
+        if (Request.Cookies.TryGetValue("MusicAI.Refresh", out var rt) && !string.IsNullOrEmpty(rt))
+        {
+            try { _refreshRepo?.Revoke(rt); } catch { }
+            Response.Cookies.Delete("MusicAI.Refresh");
+        }
         return Ok(new { message = "Logged out successfully" });
     }
 
@@ -390,6 +501,13 @@ public class OnboardingController : ControllerBase
     {
         if (string.IsNullOrEmpty(hash)) return false;
         return MusicAI.Common.Security.PasswordHasher.Verify(password, hash);
+    }
+
+    private static string GenerateRefreshToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(64);
+        var s = Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        return s;
     }
 
     // Since controllers are created per-request, access HttpContext via a static accessor service

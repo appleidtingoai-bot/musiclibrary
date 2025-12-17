@@ -40,19 +40,24 @@ namespace MusicAI.Infrastructure.Services
                     _bucket = null;
                 }
 
-                if (string.IsNullOrWhiteSpace(region))
-                {
-                    throw new InvalidOperationException("AWS region not configured. Set 'AWS:Region' or environment variable 'AWS_REGION'.");
-                }
-
-                var regionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region);
-
                 // Configure S3 client with defaults; we'll adjust if a custom endpoint/access point is provided
-                var s3Config = new AmazonS3Config
+                AmazonS3Config s3Config = new AmazonS3Config();
+                s3Config.UseArnRegion = true; // Required for S3 Access Points when region is provided
+
+                Amazon.RegionEndpoint? regionEndpoint = null;
+                if (!string.IsNullOrWhiteSpace(region))
                 {
-                    RegionEndpoint = regionEndpoint,
-                    UseArnRegion = true // Required for S3 Access Points
-                };
+                    try
+                    {
+                        regionEndpoint = Amazon.RegionEndpoint.GetBySystemName(region);
+                        s3Config.RegionEndpoint = regionEndpoint;
+                    }
+                    catch
+                    {
+                        // If region string is invalid, leave RegionEndpoint null and continue; custom ServiceURL may be used instead
+                        regionEndpoint = null;
+                    }
+                }
 
                 // Decide how to treat accessPointAlias:
                 // - If it looks like an ARN (starts with "arn:") or contains "s3alias", treat as access-point/bucket name
@@ -66,9 +71,12 @@ namespace MusicAI.Infrastructure.Services
                     }
                     else if (accessPointAlias.StartsWith("http", StringComparison.OrdinalIgnoreCase) || accessPointAlias.Contains('.'))
                     {
-                        // Custom S3-compatible endpoint (e.g., MinIO or custom domain)
+                        // Custom S3-compatible endpoint (e.g., MinIO or Cloudflare R2)
                         s3Config.ServiceURL = accessPointAlias;
                         s3Config.ForcePathStyle = true;
+                        // When using a custom ServiceURL (like R2) a region may not be required.
+                        // Ensure we don't require a RegionEndpoint in that case.
+                        s3Config.RegionEndpoint = regionEndpoint;
                     }
                     else
                     {

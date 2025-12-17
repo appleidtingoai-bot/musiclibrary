@@ -29,7 +29,9 @@ namespace MusicAI.Infrastructure.Services
             using var ms = new MemoryStream();
             await res.AudioStream.CopyToAsync(ms);
             ms.Position = 0;
-            await _s3.UploadFileAsync(key, ms, "audio/mpeg");
+            await using var uploadStream = new MemoryStream(ms.ToArray());
+            uploadStream.Position = 0;
+            await _s3.UploadFileAsync(key, uploadStream, "audio/mpeg");
             return await _s3.GetPresignedUrlAsync(key, TimeSpan.FromMinutes(30));
         }
 

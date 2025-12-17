@@ -180,6 +180,20 @@ namespace MusicAI.Orchestrator.Data
             return results.ToList();
         }
 
+        public async Task<List<MusicTrack>> GetByUploaderAsync(string uploaderId, int offset = 0, int limit = 50)
+        {
+            if (string.IsNullOrEmpty(uploaderId)) return new List<MusicTrack>();
+            using var db = Connection();
+            db.Open();
+            var results = await db.QueryAsync<MusicTrack>(@"
+                SELECT * FROM music_tracks 
+                WHERE uploaded_by = @Uploader AND is_active = true 
+                ORDER BY uploaded_at DESC 
+                OFFSET @Offset LIMIT @Limit",
+                new { Uploader = uploaderId, Offset = offset, Limit = limit });
+            return results.ToList();
+        }
+
         public async Task UpdateMetadataAsync(string id, string? title = null, string? artist = null, 
             string? album = null, string? genre = null, string? mood = null)
         {

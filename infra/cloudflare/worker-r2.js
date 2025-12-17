@@ -1,10 +1,11 @@
 // worker-r2.js
-// Cloudflare Worker (R2-backed) for MusicAI: auth cookie issuance + media serving with edge cache and simple Range support.
-// Bindings required:
-// - R2_MEDIA (R2 bucket binding)
+// Cloudflare Worker: proxy S3 using presigned URLs provided by your Orchestrator
+// Provides: auth cookie issuance + media serving with edge cache and Range support.
+// Environment bindings required (in Wrangler / Cloudflare):
+// - ORCHESTRATOR_URL (e.g. https://api.yourdomain.com)
 // Secrets required:
 // - EDGE_SIGN_KEY (HMAC key for signing edge cookie)
-// - JWT_SECRET (optional for HS256 validation; recommend using JWKS in production)
+// - JWT_SECRET (optional for HS256 validation)
 
 const EDGE_COOKIE = "Edge-Play";
 const EDGE_MAX = 60 * 15; // 15 minutes
@@ -92,64 +93,133 @@ async function handleRequest(event) {
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Set-Cookie': cookieStr, 'Content-Type': 'application/json' } });
   }
 
-  // GET /media/* -> validate cookie and serve from R2 with caching
+  // GET /media/* -> validate cookie and proxy & cache from Orchestrator-presigned S3 URL
   if (path.startsWith('/media/')) {
     const cookies = parseCookies(req.headers.get('Cookie'));
     const edge = cookies[EDGE_COOKIE];
     const ok = await verifyEdge(edge);
     if (!ok) return new Response('Unauthorized', { status: 401 });
 
-    // Map URL path to R2 key (strip leading /media/)
+    // Map URL path to object key (strip leading /media/)
     const key = path.replace(/^\/media\//, '');
     if (!key) return new Response('Not found', { status: 404 });
-
     const cache = caches.default;
-    // Create a cache key based on the request URL only (avoid cookie in key)
-    const cacheKey = new Request(new URL(req.url).toString(), { method: 'GET' });
-    const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    const allowedOrigin = req.headers.get('Origin') || '*';
+    // Build a cache key that doesn't include cookies
+    const cacheKey = new Request(`${url.origin}${url.pathname}`, { method: 'GET' });
 
-    // Support simple Range header for small segments
+    // First: ask Orchestrator for a presigned URL and metadata
+    const presignUrl = (typeof ORCHESTRATOR_URL !== 'undefined' ? ORCHESTRATOR_URL : '') + '/api/media/presign?key=' + encodeURIComponent(key);
+    // Forward user's auth (Authorization header or MusicAI.Auth cookie) to presign endpoint so server can validate
+    const forwardHeaders = {};
+    const authHdr = req.headers.get('Authorization');
+    if (authHdr) forwardHeaders['Authorization'] = authHdr;
+    else if (cookies['MusicAI.Auth']) forwardHeaders['Cookie'] = `MusicAI.Auth=${encodeURIComponent(cookies['MusicAI.Auth'])}`;
+
+    let presignResp;
+    try {
+      console.log('Fetching presign URL from orchestrator', presignUrl);
+      presignResp = await fetch(presignUrl, { method: 'GET', headers: forwardHeaders });
+      console.log('Presign response status', presignResp.status);
+    } catch (e) {
+      console.error('Error contacting presign endpoint', e);
+      return new Response('Error contacting presign endpoint', { status: 502 });
+    }
+    if (!presignResp.ok) {
+      console.error('Presign endpoint returned non-OK', presignResp.status);
+      return new Response('Could not obtain presigned URL', { status: presignResp.status });
+    }
+    let meta;
+    try { meta = await presignResp.json(); } catch (e) { console.error('Bad presign response', e); return new Response('Bad presign response', { status: 502 }); }
+    console.log('Presign metadata', meta);
+    const presigned = meta.url;
+    const contentType = meta.contentType || 'application/octet-stream';
+    const size = Number(meta.contentLength || 0);
+    const etag = meta.etag || null;
+
+    // If we already cached the full object, serve ranges from cache
+    const cachedFull = await cache.match(cacheKey);
     const rangeHeader = req.headers.get('Range');
 
+    // Helper: serve a slice from an ArrayBuffer response
+    async function serveRangeFromBuffer(buf, start, end) {
+      const total = buf.byteLength;
+      const s = start ?? 0;
+      const e = (typeof end === 'number') ? end : (total - 1);
+      if (s > e || s < 0) return new Response('Range Not Satisfiable', { status: 416 });
+      const slice = buf.slice(s, e + 1);
+      const h = new Headers();
+      h.set('Content-Type', contentType);
+      h.set('Accept-Ranges', 'bytes');
+      h.set('Content-Range', `bytes ${s}-${e}/${total}`);
+      h.set('Content-Length', String(slice.byteLength));
+      h.set('Cache-Control', `public, max-age=${SEG_TTL}`);
+      h.set('Access-Control-Allow-Origin', 'https://www.tingoradio.ai');
+      if (etag) h.set('ETag', etag);
+      return new Response(slice, { status: 206, headers: h });
+    }
+
     try {
-      // Fetch from R2
-      const obj = await R2_MEDIA.get(key);
-      if (!obj) return new Response('Not found', { status: 404 });
-
-      // Content type
-      const contentType = obj.httpMetadata?.contentType || 'application/octet-stream';
-
-      // If Range requested, slice the ArrayBuffer (ok for small HLS segments)
       if (rangeHeader) {
-        const m = /bytes=(\d+)-(\d+)?/.exec(rangeHeader);
-        if (m) {
+        // If full object cached, slice and return
+        if (cachedFull) {
+          const cloned = cachedFull.clone();
+          const buf = await cloned.arrayBuffer();
+          const m = /bytes=(\d+)-(\d+)?/.exec(rangeHeader);
+          if (!m) return new Response('Bad Range', { status: 400 });
           const start = Number(m[1]);
           const end = m[2] ? Number(m[2]) : undefined;
-          const ab = await obj.arrayBuffer();
-          const total = ab.byteLength;
-          const slice = ab.slice(start, end ? end + 1 : undefined);
-          const rEnd = end ?? (total - 1);
-          const headers = new Headers();
-          headers.set('Content-Type', contentType);
-          headers.set('Content-Range', `bytes ${start}-${rEnd}/${total}`);
-          headers.set('Accept-Ranges', 'bytes');
-          headers.set('Cache-Control', `public, max-age=${SEG_TTL}`);
-          headers.set('Access-Control-Allow-Origin', 'https://www.tingoradio.ai');
-          const response = new Response(slice, { status: 206, headers });
-          event.waitUntil(cache.put(cacheKey, response.clone()));
-          return response;
+          const resp = await serveRangeFromBuffer(buf, start, end);
+          // keep cached copy in background
+          return resp;
         }
+
+        // If object small enough, fetch full, cache it, then serve slice
+        const MAX_CACHEABLE = 50 * 1024 * 1024; // 50 MB
+        if (size > 0 && size <= MAX_CACHEABLE) {
+          const originResp = await fetch(presigned, { method: 'GET' });
+          console.log('Origin fetch (full) status', originResp.status, { key, presigned: presigned && presigned.slice(0,120) });
+          if (!originResp.ok) {
+            console.error('Origin returned error for full fetch', { status: originResp.status });
+            return new Response('Origin error', { status: originResp.status });
+          }
+          const buf = await originResp.arrayBuffer();
+          const fullResp = new Response(buf.slice(0), { status: 200, headers: { 'Content-Type': contentType, 'Cache-Control': `public, max-age=${SEG_TTL}`, 'Access-Control-Allow-Origin': allowedOrigin } });
+          if (etag) fullResp.headers.set('ETag', etag);
+          event.waitUntil(cache.put(cacheKey, fullResp.clone()));
+          const m = /bytes=(\d+)-(\d+)?/.exec(rangeHeader);
+          if (!m) return new Response('Bad Range', { status: 400 });
+          const start = Number(m[1]);
+          const end = m[2] ? Number(m[2]) : undefined;
+          return await serveRangeFromBuffer(buf, start, end);
+        }
+
+        // Large object: forward Range to origin (do not buffer)
+        const proxied = await fetch(presigned, { method: 'GET', headers: { 'Range': rangeHeader } });
+        console.log('Origin fetch (range) status', proxied.status, { range: rangeHeader });
+        // Ensure CORS and caching hints
+        const headers = new Headers(proxied.headers);
+        headers.set('Access-Control-Allow-Origin', allowedOrigin);
+        headers.set('Cache-Control', headers.get('Cache-Control') || `public, max-age=${SEG_TTL}`);
+        return new Response(proxied.body, { status: proxied.status, headers });
       }
 
-      // No Range: stream object body
-      const headers = new Headers();
-      headers.set('Content-Type', contentType);
-      headers.set('Cache-Control', `public, max-age=${SEG_TTL}`);
-      headers.set('Access-Control-Allow-Origin', 'https://www.tingoradio.ai');
-      const response = new Response(obj.body, { status: 200, headers });
-      event.waitUntil(cache.put(cacheKey, response.clone()));
-      return response;
+      // No Range: try cache, then fetch full object and cache
+      if (cachedFull) return cachedFull;
+      const originResp = await fetch(presigned, { method: 'GET' });
+      console.log('Origin fetch (full, no-range) status', originResp.status, { key });
+      if (!originResp.ok) {
+        console.error('Origin returned error for full fetch', { status: originResp.status });
+        return new Response('Origin error', { status: originResp.status });
+      }
+      const headers = new Headers(originResp.headers);
+      headers.set('Access-Control-Allow-Origin', allowedOrigin);
+      headers.set('Cache-Control', headers.get('Cache-Control') || `public, max-age=${SEG_TTL}`);
+      if (etag) headers.set('ETag', etag);
+      const resp = new Response(originResp.body, { status: originResp.status, headers });
+      console.log('Caching media at edge', cacheKey.url);
+      event.waitUntil(cache.put(cacheKey, resp.clone()));
+      return resp;
     } catch (e) {
       return new Response('Error fetching media', { status: 502 });
     }

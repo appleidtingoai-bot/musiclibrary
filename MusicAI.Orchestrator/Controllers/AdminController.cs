@@ -33,6 +33,7 @@ public class AdminController : ControllerBase
     private readonly MusicAI.Orchestrator.Services.MusicCategorizationService _categorizer;
     private readonly MusicAI.Orchestrator.Data.MusicRepository? _musicRepo;
     private readonly MusicAI.Orchestrator.Services.IAudioProcessingService? _audioService;
+    private readonly ILogger<AdminController> _logger;
     private static readonly HttpClient _httpClient = new();
     private static readonly AsyncRetryPolicy _uploadPolicy = Policy
         .Handle<Exception>()
@@ -48,13 +49,15 @@ public class AdminController : ControllerBase
         AdminsRepository? adminsRepo = null,
         MusicAI.Orchestrator.Services.MusicCategorizationService? categorizer = null,
         MusicAI.Orchestrator.Data.MusicRepository? musicRepo = null,
-        MusicAI.Orchestrator.Services.IAudioProcessingService? audioService = null)
+        MusicAI.Orchestrator.Services.IAudioProcessingService? audioService = null,
+        ILogger<AdminController>? logger = null)
     {
         _s3 = s3;
         _adminsRepo = adminsRepo ?? throw new ArgumentNullException(nameof(adminsRepo));
         _categorizer = categorizer ?? new MusicAI.Orchestrator.Services.MusicCategorizationService();
         _musicRepo = musicRepo;
         _audioService = audioService;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AdminController>.Instance;
     }
 
     public record AdminLoginRequest(string Email, string Password);
@@ -1047,6 +1050,9 @@ public class AdminController : ControllerBase
                     await using var ms = new MemoryStream();
                     await file.CopyToAsync(ms);
                     ms.Position = 0;
+                    // Capture file size before passing the stream to external uploaders
+                    // (some upload implementations may close the stream after use)
+                    var fileSize = ms.Length;
 
                     try
                     {
@@ -1055,7 +1061,13 @@ public class AdminController : ControllerBase
                             ms.Position = 0;
                             if (_s3 != null)
                             {
-                                await _s3.UploadFileAsync(key, ms, file.ContentType ?? "audio/mpeg");
+                                // Create a copy of the buffer to pass to the uploader. Some S3-compatible
+                                // clients (or their TransferUtility implementations) may dispose the
+                                // provided stream — copying avoids accidental disposal of our primary
+                                // MemoryStream which we may still inspect later.
+                                await using var uploadStream = new MemoryStream(ms.ToArray());
+                                uploadStream.Position = 0;
+                                await _s3.UploadFileAsync(key, uploadStream, file.ContentType ?? "audio/mpeg");
                             }
                             else
                             {
@@ -1075,6 +1087,15 @@ public class AdminController : ControllerBase
                         {
                             try
                             {
+                                // Log S3Key before DB insert
+                                if (string.IsNullOrEmpty(key))
+                                {
+                                    _logger.LogWarning($"[ADMIN UPLOAD] Attempt to insert track with empty S3Key. file={fileName}");
+                                }
+                                else
+                                {
+                                    _logger.LogInformation($"[ADMIN UPLOAD] Inserting track: title={Path.GetFileNameWithoutExtension(fileName)} s3Key={key}");
+                                }
                                 var track = new MusicAI.Orchestrator.Data.MusicTrack
                                 {
                                     Id = Guid.NewGuid().ToString(),
@@ -1082,9 +1103,9 @@ public class AdminController : ControllerBase
                                     Artist = "Unknown", // TODO: Extract from metadata
                                     Genre = normalizedFolder,
                                     S3Key = key,
-                                    S3Bucket = "tingoradiobucket",
+                                    S3Bucket = "tingomusiclibrary",
                                     ContentType = file.ContentType ?? "audio/mpeg",
-                                    FileSizeBytes = ms.Length,
+                                    FileSizeBytes = fileSize,
                                     UploadedBy = ae,
                                     UploadedAt = DateTime.UtcNow,
                                     IsActive = true
@@ -1503,7 +1524,9 @@ public class AdminController : ControllerBase
                             ms.Position = 0;
                             if (_s3 != null)
                             {
-                                await _s3.UploadFileAsync(key, ms, file.ContentType ?? "audio/mpeg");
+                                await using var uploadStream = new MemoryStream(ms.ToArray());
+                                uploadStream.Position = 0;
+                                await _s3.UploadFileAsync(key, uploadStream, file.ContentType ?? "audio/mpeg");
                             }
                             else
                             {

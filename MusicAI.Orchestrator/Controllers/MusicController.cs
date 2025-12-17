@@ -85,15 +85,20 @@ namespace MusicAI.Orchestrator.Controllers
             {
                 var trackId = Guid.NewGuid().ToString("N");
                 var s3Key = $"music/{genre.ToLower()}/{trackId}_{file.FileName}";
-                var s3Bucket = _s3Service != null 
-                    ? (Environment.GetEnvironmentVariable("AWS_S3_BUCKET") ?? "tingoradiobucket")
+                var s3Bucket = _s3Service != null
+                    ? (Environment.GetEnvironmentVariable("AWS__S3Bucket") ?? "tingomusiclibrary")
                     : "local";
-                
-                // Upload to S3 or save locally
+
+                // Upload to S3/R2 or save locally
                 if (_s3Service != null)
                 {
-                    await using var stream = file.OpenReadStream();
-                    await _s3Service.UploadFileAsync(s3Key, stream, file.ContentType ?? "audio/mpeg");
+                    // Copy into memory to avoid callers disposing the original stream.
+                    await using var ms = new MemoryStream();
+                    await file.CopyToAsync(ms);
+                    ms.Position = 0;
+                    await using var uploadStream = new MemoryStream(ms.ToArray());
+                    uploadStream.Position = 0;
+                    await _s3Service.UploadFileAsync(s3Key, uploadStream, file.ContentType ?? "audio/mpeg");
                 }
                 else
                 {

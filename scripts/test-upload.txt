@@ -1,0 +1,2 @@
+Test upload file for Cloudflare R2 verification.
+Created by scripts/test_r2_upload.ps1
