@@ -93,6 +93,22 @@ async function handleRequest(event) {
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Set-Cookie': cookieStr, 'Content-Type': 'application/json' } });
   }
 
+  // GET /auth/debug-cookie -> debug endpoint to validate Edge cookie and return reason
+  // Requires X-Orchestrator-Key header matching the worker secret (so it's not public).
+  if (path === '/auth/debug-cookie' && req.method === 'GET') {
+    const ork = req.headers.get('X-Orchestrator-Key');
+    if (!ork || typeof ORCHESTRATOR_API_KEY === 'undefined' || ork !== ORCHESTRATOR_API_KEY) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+    const cookies = parseCookies(req.headers.get('Cookie'));
+    const edge = cookies[EDGE_COOKIE];
+    const verified = await verifyEdge(edge);
+    if (verified === false) {
+      return new Response(JSON.stringify({ ok: false, reason: 'invalid_or_expired' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({ ok: true, userId: verified.userId || null }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
   // GET /media/* -> validate cookie and proxy & cache from Orchestrator-presigned S3 URL
   if (path.startsWith('/media/')) {
     const cookies = parseCookies(req.headers.get('Cookie'));
