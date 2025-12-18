@@ -1,7 +1,7 @@
-name = "musicai-audio-proxy"
+name = "musicai-cdn-worker"
 main = "worker-r2.js"
 compatibility_date = "2025-12-16"
-type = "javascript"
+
 
 # Replace with your Cloudflare account id before publishing
 account_id = "6a94a1258e8b853bae5b2ecbe5dfd64a"

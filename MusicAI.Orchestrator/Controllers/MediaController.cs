@@ -51,44 +51,67 @@ namespace MusicAI.Orchestrator.Controllers
             if (string.IsNullOrWhiteSpace(key)) return BadRequest(new { error = "missing key" });
             if (_s3 == null) return StatusCode(500, new { error = "S3 service not configured" });
 
-            // Authenticate request: JWT in Authorization: Bearer or MusicAI.Auth cookie
+            // Authenticate request: either a JWT in Authorization: Bearer or MusicAI.Auth cookie,
+            // or a worker API key (ORCHESTRATOR_API_KEY) supplied as Authorization: Bearer <key>.
             string? token = null;
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            var orchestratorApiKey = _configuration["Orchestrator:ApiKey"] ?? Environment.GetEnvironmentVariable("ORCHESTRATOR_API_KEY");
+
+            var isWorkerAuth = false;
             if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             {
-                token = authHeader.Substring("Bearer ".Length).Trim();
+                var candidate = authHeader.Substring("Bearer ".Length).Trim();
+                if (!string.IsNullOrEmpty(orchestratorApiKey) && candidate == orchestratorApiKey)
+                {
+                    // authenticated as trusted worker
+                    isWorkerAuth = true;
+                }
+                else
+                {
+                    token = candidate;
+                }
             }
             else if (Request.Cookies.TryGetValue("MusicAI.Auth", out var cookieToken))
             {
                 token = cookieToken;
             }
 
-            if (string.IsNullOrEmpty(token)) return Unauthorized(new { error = "missing token" });
+            ClaimsPrincipal? principal = null;
+            string? userId = null;
 
-            ClaimsPrincipal principal;
-            try
+            if (!isWorkerAuth)
             {
-                var jwtKey = _configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_SECRET") ?? string.Empty;
-                var handler = new JwtSecurityTokenHandler();
-                var parameters = new TokenValidationParameters
+                if (string.IsNullOrEmpty(token)) return Unauthorized(new { error = "missing token" });
+
+                try
                 {
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = !string.IsNullOrEmpty(jwtKey),
-                    IssuerSigningKey = !string.IsNullOrEmpty(jwtKey) ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)) : null,
-                    ClockSkew = TimeSpan.FromSeconds(30)
-                };
-                principal = handler.ValidateToken(token, parameters, out var validatedToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("Presign token validation failed: {Msg}", ex.Message);
-                return Unauthorized(new { error = "invalid token" });
-            }
+                    var jwtKey = _configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_SECRET") ?? string.Empty;
+                    var handler = new JwtSecurityTokenHandler();
+                    var parameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = !string.IsNullOrEmpty(jwtKey),
+                        IssuerSigningKey = !string.IsNullOrEmpty(jwtKey) ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)) : null,
+                        ClockSkew = TimeSpan.FromSeconds(30)
+                    };
+                    principal = handler.ValidateToken(token, parameters, out var validatedToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Presign token validation failed: {Msg}", ex.Message);
+                    return Unauthorized(new { error = "invalid token" });
+                }
 
-            var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? principal.FindFirst("sub")?.Value;
-            if (string.IsNullOrEmpty(userId)) return Unauthorized(new { error = "invalid token payload" });
+                userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? principal.FindFirst("sub")?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized(new { error = "invalid token payload" });
+            }
+            else
+            {
+                // Worker-authenticated requests are trusted; set a synthetic user id for logging
+                userId = "edge-worker";
+            }
 
             // Rate limiting: simple per-user sliding counter (MemoryCache)
             var rlKey = $"presign_rl:{userId}";
@@ -112,40 +135,47 @@ namespace MusicAI.Orchestrator.Controllers
             // Authorization / policy enforcement: check subscription or credits
             try
             {
-                var user = _usersRepo.GetById(userId);
-                if (user == null)
+                if (!isWorkerAuth)
                 {
-                    _logger.LogWarning("Presign denied: user not found {UserId}", userId);
-                    return Unauthorized(new { error = "user not found" });
-                }
-                if (!isJingle)
-                {
-                    var hasAccess = false;
-                    if (user.IsSubscribed) hasAccess = true;
-                    else if (user.Credits > 0 && (user.CreditsExpiry == null || user.CreditsExpiry > DateTime.UtcNow)) hasAccess = true;
-                    else if (_subsRepo != null)
+                    var user = _usersRepo.GetById(userId);
+                    if (user == null)
                     {
-                        var sub = await _subsRepo.GetActiveSubscriptionAsync(userId);
-                        if (sub != null && sub.Status == "active") hasAccess = true;
+                        _logger.LogWarning("Presign denied: user not found {UserId}", userId);
+                        return Unauthorized(new { error = "user not found" });
                     }
-
-                    if (!hasAccess)
+                    if (!isJingle)
                     {
-                        // If credits expired, allow access when the user's country is Nigeria; otherwise require purchase
-                        var country = user.Country ?? string.Empty;
-                        var isNigeria = country.Equals("NG", StringComparison.OrdinalIgnoreCase) || country.Contains("Nigeria", StringComparison.OrdinalIgnoreCase);
-                        if (isNigeria)
+                        var hasAccess = false;
+                        if (user.IsSubscribed) hasAccess = true;
+                        else if (user.Credits > 0 && (user.CreditsExpiry == null || user.CreditsExpiry > DateTime.UtcNow)) hasAccess = true;
+                        else if (_subsRepo != null)
                         {
-                            _logger.LogInformation("Presign allowed: expired credits but user country is Nigeria for {UserId}", userId);
-                            hasAccess = true;
+                            var sub = await _subsRepo.GetActiveSubscriptionAsync(userId);
+                            if (sub != null && sub.Status == "active") hasAccess = true;
+                        }
+
+                        if (!hasAccess)
+                        {
+                            // If credits expired, allow access when the user's country is Nigeria; otherwise require purchase
+                            var country = user.Country ?? string.Empty;
+                            var isNigeria = country.Equals("NG", StringComparison.OrdinalIgnoreCase) || country.Contains("Nigeria", StringComparison.OrdinalIgnoreCase);
+                            if (isNigeria)
+                            {
+                                _logger.LogInformation("Presign allowed: expired credits but user country is Nigeria for {UserId}", userId);
+                                hasAccess = true;
+                            }
+                        }
+
+                        if (!hasAccess)
+                        {
+                            _logger.LogInformation("Presign denied: no valid subscription/credits for {UserId}", userId);
+                            return StatusCode(402, new { error = "insufficient subscription/credits" });
                         }
                     }
-
-                    if (!hasAccess)
-                    {
-                        _logger.LogInformation("Presign denied: no valid subscription/credits for {UserId}", userId);
-                        return StatusCode(402, new { error = "insufficient subscription/credits" });
-                    }
+                }
+                else
+                {
+                    _logger.LogInformation("Presign requested by trusted worker for key {Key}", key);
                 }
             }
             catch (Exception ex)

@@ -115,6 +115,10 @@ async function handleRequest(event) {
     const authHdr = req.headers.get('Authorization');
     if (authHdr) forwardHeaders['Authorization'] = authHdr;
     else if (cookies['MusicAI.Auth']) forwardHeaders['Cookie'] = `MusicAI.Auth=${encodeURIComponent(cookies['MusicAI.Auth'])}`;
+    // If worker has an ORCHESTRATOR_API_KEY secret, authenticate the presign request with it
+    if (typeof ORCHESTRATOR_API_KEY !== 'undefined' && ORCHESTRATOR_API_KEY) {
+      forwardHeaders['Authorization'] = `Bearer ${ORCHESTRATOR_API_KEY}`;
+    }
 
     let presignResp;
     try {
