@@ -288,6 +288,35 @@ namespace MusicAI.Orchestrator.Controllers
             }
             catch { }
 
+            // Fire-and-forget: enqueue presigns for the next N tracks to warm cache/CDN
+            try
+            {
+                int prefetch = 2;
+                var prefetchEnv = Environment.GetEnvironmentVariable("MUSIC_PREFETCH_TRACKS");
+                if (!string.IsNullOrEmpty(prefetchEnv) && int.TryParse(prefetchEnv, out var pv)) prefetch = pv;
+
+                var nextTracks = playlist.Skip(1).Where(t => !string.IsNullOrEmpty(t.S3Key)).Take(prefetch).ToList();
+                foreach (var t in nextTracks)
+                {
+                    var key = t.S3Key!;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _bgSigner.EnqueueAsync(new MusicAI.Orchestrator.Services.BackgroundSignerService.PresignRequest { Key = key, ExpiryMinutes = 60 });
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Background presign (prefetch) failed for {Key}", key);
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Prefetch presign scheduling failed");
+            }
+
             var tracks = playlist.Select(t => new { id = t.Id, title = t.Title, artist = t.Artist, s3Key = t.S3Key, duration = t.DurationSeconds, hlsUrl = (t == playlist.FirstOrDefault() && !string.IsNullOrEmpty(firstPresigned)) ? firstPresigned : GetCdnOrOriginUrl(t.S3Key, string.Empty) }).ToList();
             // Log missing S3Key for debugging
             foreach (var t in playlist) {

@@ -3,15 +3,13 @@ main = "worker-r2.js"
 compatibility_date = "2025-12-16"
 type = "javascript"
 
-# Fill these before publishing
-account_id = "your-cloudflare-account-id"
-route = "audio.tingoradio.ai/*"
+# Replace with your Cloudflare account id before publishing
+account_id = "6a94a1258e8b853bae5b2ecbe5dfd64a"
+# Route the worker to the correct hostname
+route = "cdn.tingoradio.ai/*"
 
 [vars]
 ORCHESTRATOR_URL = "https://tingoradiomusiclibrary.tingoradio.ai"
-name = "musicai-cdn-worker"
-compatibility_date = "2025-12-11"
-account_id = "6a94a1258e8b853bae5b2ecbe5dfd64a"
 
 # Bind the R2 bucket created in your Cloudflare account
 [[r2_buckets]]
@@ -19,4 +17,4 @@ binding = "R2_MEDIA"
 bucket_name = "tingoradiobucket"
 preview_bucket_name = "tingoradiobucket"
 
-# Add any other worker settings here. Replace account_id before publishing.
+# Note: ensure EDGE_SIGN_KEY and JWT_SECRET are configured in the Cloudflare Worker secrets
