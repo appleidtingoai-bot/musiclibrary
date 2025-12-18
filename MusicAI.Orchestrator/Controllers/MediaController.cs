@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MusicAI.Infrastructure.Services;
 using System.Net.Http;
+using System.Net;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
@@ -49,6 +50,15 @@ namespace MusicAI.Orchestrator.Controllers
         public async Task<IActionResult> Presign([FromQuery] string key)
         {
             if (string.IsNullOrWhiteSpace(key)) return BadRequest(new { error = "missing key" });
+            // Accept URL-encoded keys from the worker; decode so S3 receives the raw object key
+            try
+            {
+                key = WebUtility.UrlDecode(key ?? string.Empty);
+            }
+            catch
+            {
+                // if decode fails, keep original key
+            }
             if (_s3 == null) return StatusCode(500, new { error = "S3 service not configured" });
 
             // Authenticate request: either a JWT in Authorization: Bearer or MusicAI.Auth cookie,
