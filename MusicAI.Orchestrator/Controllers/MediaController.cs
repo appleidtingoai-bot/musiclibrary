@@ -58,12 +58,19 @@ namespace MusicAI.Orchestrator.Controllers
             var orchestratorApiKey = _configuration["Orchestrator:ApiKey"] ?? Environment.GetEnvironmentVariable("ORCHESTRATOR_API_KEY");
 
             var isWorkerAuth = false;
-            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            // Check for worker key in a custom header first (worker will send X-Orchestrator-Key)
+            var orchestratorHeader = Request.Headers["X-Orchestrator-Key"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(orchestratorHeader) && !string.IsNullOrEmpty(orchestratorApiKey) && orchestratorHeader == orchestratorApiKey)
+            {
+                isWorkerAuth = true;
+            }
+
+            if (!isWorkerAuth && !string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             {
                 var candidate = authHeader.Substring("Bearer ".Length).Trim();
                 if (!string.IsNullOrEmpty(orchestratorApiKey) && candidate == orchestratorApiKey)
                 {
-                    // authenticated as trusted worker
+                    // authenticated as trusted worker (fallback)
                     isWorkerAuth = true;
                 }
                 else

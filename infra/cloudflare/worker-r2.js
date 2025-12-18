@@ -116,8 +116,9 @@ async function handleRequest(event) {
     if (authHdr) forwardHeaders['Authorization'] = authHdr;
     else if (cookies['MusicAI.Auth']) forwardHeaders['Cookie'] = `MusicAI.Auth=${encodeURIComponent(cookies['MusicAI.Auth'])}`;
     // If worker has an ORCHESTRATOR_API_KEY secret, authenticate the presign request with it
+    // Use a custom header so the orchestrator's JWT middleware doesn't try to parse it.
     if (typeof ORCHESTRATOR_API_KEY !== 'undefined' && ORCHESTRATOR_API_KEY) {
-      forwardHeaders['Authorization'] = `Bearer ${ORCHESTRATOR_API_KEY}`;
+      forwardHeaders['X-Orchestrator-Key'] = ORCHESTRATOR_API_KEY;
     }
 
     let presignResp;
