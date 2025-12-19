@@ -18,14 +18,14 @@ namespace MusicAI.Orchestrator.Controllers
         private readonly IS3Service? _s3Service;
         private readonly ILogger<MusicStreamController> _logger;
         private readonly IStreamTokenService _tokenService;
-        private readonly dynamic _breaker;
+        private readonly object? _breaker;
 
-        public MusicStreamController(IS3Service? s3Service, ILogger<MusicStreamController> logger, IStreamTokenService tokenService, dynamic breaker)
+        public MusicStreamController(IS3Service? s3Service, ILogger<MusicStreamController> logger, IStreamTokenService tokenService)
         {
             _s3Service = s3Service;
             _logger = logger;
             _tokenService = tokenService;
-            _breaker = breaker;
+            _breaker = null;
         }
 
         /// <summary>
@@ -42,10 +42,21 @@ namespace MusicAI.Orchestrator.Controllers
 
             _logger.LogInformation("HLS playlist requested for key: {Key}", key);
 
-            if (_breaker != null && _breaker.IsOpen)
+            if (_breaker != null)
             {
-                _logger.LogWarning("Manifest generation circuit open - rejecting HLS request for {Key}", key);
-                return StatusCode(503, new { error = "Temporarily unavailable" });
+                try
+                {
+                    var prop = _breaker.GetType().GetProperty("IsOpen");
+                    if (prop != null && prop.GetValue(_breaker) is bool isOpen && isOpen)
+                    {
+                        _logger.LogWarning("Manifest generation circuit open - rejecting HLS request for {Key}", key);
+                        return StatusCode(503, new { error = "Temporarily unavailable" });
+                    }
+                }
+                catch
+                {
+                    // ignore reflection errors and continue
+                }
             }
 
             // Enforce Origin whitelist for HLS requests to prevent direct downloads
