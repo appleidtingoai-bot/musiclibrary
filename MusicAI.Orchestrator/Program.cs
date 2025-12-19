@@ -912,7 +912,7 @@ app.Use(async (context, next) =>
     {
         "tingoradio.ai",
         "www.tingoradio.ai",
-        "tingoradiomusiclibrary.tingoai.ai",
+        "tingoradiomusiclibrary.tingoradio.ai",
         "localhost",
         "localhost:3000",
         // Allow direct IP access on dev machines (useful when curling 127.0.0.1)
