@@ -42,6 +42,14 @@ namespace MusicAI.Orchestrator.Controllers
 
             _logger.LogInformation("HLS playlist requested for key: {Key}", key);
 
+            // Diagnostic: log relevant headers to help debug Origin/Host when behind a proxy
+            _logger.LogInformation("Incoming headers for HLS: Origin={Origin}, Referer={Referer}, Host={Host}, X-Forwarded-Host={XForwardedHost}, X-Forwarded-Proto={XForwardedProto}",
+                Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty,
+                Request.Headers.ContainsKey("Referer") ? Request.Headers["Referer"].ToString() : string.Empty,
+                Request.Host.Value,
+                Request.Headers.ContainsKey("X-Forwarded-Host") ? Request.Headers["X-Forwarded-Host"].ToString() : string.Empty,
+                Request.Headers.ContainsKey("X-Forwarded-Proto") ? Request.Headers["X-Forwarded-Proto"].ToString() : string.Empty);
+
             if (_breaker != null)
             {
                 try
@@ -59,12 +67,29 @@ namespace MusicAI.Orchestrator.Controllers
                 }
             }
 
-            // Enforce Origin whitelist for HLS requests to prevent direct downloads
+            // Enforce Origin whitelist for HLS requests to prevent direct downloads.
+            // Relaxed: if Origin header is missing (common behind some proxies or for same-origin requests),
+            // accept the request when the Host or X-Forwarded-Host matches an allowed host.
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
-            if (string.IsNullOrEmpty(origin) || !IsOriginAllowed(origin))
+            var forwardedHost = Request.Headers.ContainsKey("X-Forwarded-Host") ? Request.Headers["X-Forwarded-Host"].ToString() : string.Empty;
+            var host = Request.Host.Host;
+            var hostToCheck = !string.IsNullOrEmpty(forwardedHost) ? forwardedHost : host;
+
+            if (!string.IsNullOrEmpty(origin))
             {
-                _logger.LogWarning("Blocked HLS request without allowed Origin: {Origin}", origin);
-                return StatusCode(403, new { error = "Origin not allowed" });
+                if (!IsOriginAllowed(origin))
+                {
+                    _logger.LogWarning("Blocked HLS request with disallowed Origin: {Origin}", origin);
+                    return StatusCode(403, new { error = "Origin not allowed" });
+                }
+            }
+            else
+            {
+                if (!IsHostAllowed(hostToCheck))
+                {
+                    _logger.LogWarning("Blocked HLS request without Origin and disallowed Host: {Host}", hostToCheck);
+                    return StatusCode(403, new { error = "Host not allowed" });
+                }
             }
 
             // Validate stream token (short-lived) - query param 't'
@@ -233,12 +258,36 @@ namespace MusicAI.Orchestrator.Controllers
 
             _logger.LogInformation("Stream requested for key: {Key}", key);
 
-            // Require an Origin header from allowed origins to reduce direct download abuse
+            // Diagnostic: log relevant headers to help debug Origin/Host when behind a proxy
+            _logger.LogInformation("Incoming headers for stream: Origin={Origin}, Referer={Referer}, Host={Host}, X-Forwarded-Host={XForwardedHost}, X-Forwarded-Proto={XForwardedProto}",
+                Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty,
+                Request.Headers.ContainsKey("Referer") ? Request.Headers["Referer"].ToString() : string.Empty,
+                Request.Host.Value,
+                Request.Headers.ContainsKey("X-Forwarded-Host") ? Request.Headers["X-Forwarded-Host"].ToString() : string.Empty,
+                Request.Headers.ContainsKey("X-Forwarded-Proto") ? Request.Headers["X-Forwarded-Proto"].ToString() : string.Empty);
+
+            // Require an Origin header from allowed origins to reduce direct download abuse.
+            // Relaxed similarly to HLS: allow missing Origin when Host/X-Forwarded-Host matches allowed hosts.
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
-            if (string.IsNullOrEmpty(origin) || !IsOriginAllowed(origin))
+            var forwardedHost = Request.Headers.ContainsKey("X-Forwarded-Host") ? Request.Headers["X-Forwarded-Host"].ToString() : string.Empty;
+            var host = Request.Host.Host;
+            var hostToCheck = !string.IsNullOrEmpty(forwardedHost) ? forwardedHost : host;
+
+            if (!string.IsNullOrEmpty(origin))
             {
-                _logger.LogWarning("Blocked stream request without allowed Origin: {Origin}", origin);
-                return StatusCode(403, new { error = "Origin not allowed" });
+                if (!IsOriginAllowed(origin))
+                {
+                    _logger.LogWarning("Blocked stream request with disallowed Origin: {Origin}", origin);
+                    return StatusCode(403, new { error = "Origin not allowed" });
+                }
+            }
+            else
+            {
+                if (!IsHostAllowed(hostToCheck))
+                {
+                    _logger.LogWarning("Blocked stream request without Origin and disallowed Host: {Host}", hostToCheck);
+                    return StatusCode(403, new { error = "Host not allowed" });
+                }
             }
 
             // Validate stream token (short-lived) - query param 't'
@@ -434,6 +483,41 @@ namespace MusicAI.Orchestrator.Controllers
             {
                 return false;
             }
+        }
+
+        private static bool IsHostAllowed(string host)
+        {
+            try
+            {
+                var env = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+                IEnumerable<string> parts;
+                if (!string.IsNullOrEmpty(env))
+                {
+                    parts = env.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim());
+                }
+                else
+                {
+                    parts = new[] { "http://localhost:3000", "https://tingoradio.ai", "https://www.tingoradio.ai","https://tingoradiomusiclibrary.tingoradio.ai" };
+                }
+
+                foreach (var p in parts)
+                {
+                    if (Uri.TryCreate(p, UriKind.Absolute, out var u))
+                    {
+                        if (string.Equals(u.Host, host, StringComparison.OrdinalIgnoreCase)) return true;
+                        if (host.StartsWith(u.Host + ":", StringComparison.OrdinalIgnoreCase)) return true;
+                    }
+                    else
+                    {
+                        if (string.Equals(p, host, StringComparison.OrdinalIgnoreCase)) return true;
+                        if (host.StartsWith(p + ":", StringComparison.OrdinalIgnoreCase)) return true;
+                    }
+                }
+            }
+            catch
+            {
+            }
+            return false;
         }
 
         // Reflection-based helper to safely interact with an optional CloudFrontCookieSigner type

@@ -168,7 +168,7 @@ else
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 // Configure CORS: allow production domains and local dev
-var allowedOrigins = new[] { "https://tingoradio.ai", "https://www.tingoradio.ai", "https://tingoradiomusiclibrary.tingoai.ai", "http://localhost:3000" };
+var allowedOrigins = new[] { "https://tingoradio.ai", "https://www.tingoradio.ai", "https://tingoradiomusiclibrary.tingoradio.ai", "http://localhost:3000" };
 Console.WriteLine($"✓ CORS enabled for origins: {string.Join(", ", allowedOrigins)}");
 
 builder.Services.AddCors(options =>
