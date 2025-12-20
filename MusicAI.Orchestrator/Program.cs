@@ -787,6 +787,15 @@ var forwardedOptions = new ForwardedHeadersOptions
 forwardedOptions.KnownNetworks.Clear();
 forwardedOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedOptions);
+// Log resolved cookie domain so deployments (Vercel, etc.) can verify cookie scope
+try
+{
+    var resolvedCookieDomain = app.Configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN");
+    if (string.IsNullOrWhiteSpace(resolvedCookieDomain)) resolvedCookieDomain = "(none)";
+    Console.WriteLine($"✓ Cookie domain resolved: {resolvedCookieDomain}");
+    Console.WriteLine($"✓ Forwarded headers accepted: X-Forwarded-For,X-Forwarded-Proto");
+}
+catch { }
 // Apply response compression before other middleware that writes responses
 app.UseResponseCompression();
 

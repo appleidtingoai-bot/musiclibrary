@@ -95,37 +95,18 @@ public class OnboardingController : ControllerBase
         // Issue a long-lived refresh token for API clients and browsers
         string? refreshToken = null;
         DateTime? refreshExpiry = null;
-        try
-        {
-            refreshToken = GenerateRefreshToken();
-            refreshExpiry = DateTime.UtcNow.AddDays(30);
-            _refreshRepo?.Create(refreshToken, id, refreshExpiry.Value);
-            var refreshCookie = new CookieOptions
+            try
             {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
-                Path = "/",
-                Expires = refreshExpiry
-            };
-            Response.Cookies.Append("MusicAI.Refresh", refreshToken, refreshCookie);
-        }
+                refreshToken = GenerateRefreshToken();
+                refreshExpiry = DateTime.UtcNow.AddDays(30);
+                _refreshRepo?.Create(refreshToken, id, refreshExpiry.Value);
+                var refreshCookie = CreateCookieOptions(refreshExpiry);
+                Response.Cookies.Append("MusicAI.Refresh", refreshToken, refreshCookie);
+            }
         catch { }
 
         // Set auth cookie (contains JWT) for browser-based flows
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,             // required for SameSite=None
-            SameSite = SameSiteMode.None,
-            Domain = _configuration["Cookie:Domain"] ??
-             Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ??
-                ".tingoradio.ai", // use leading dot to allow apex + subdomains
-            Path = "/",           
-            Expires = DateTimeOffset.UtcNow.AddDays(30)
-           
-        };
+        var cookieOptions = CreateCookieOptions(DateTime.UtcNow.AddDays(30));
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 
         return CreatedAtAction(nameof(Me), new { id }, new { userId = id, token, role, credits = user.Credits, trialExpires = user.TrialExpires, refreshToken, refreshExpires = refreshExpiry });
@@ -141,36 +122,20 @@ public class OnboardingController : ControllerBase
         var role = "User";
         var (token, expires) = CreateJwtToken(u.Id, role, isSubscribed: u.IsSubscribed);
 
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.None,
-            Expires = expires,
-            Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
-            Path = "/"
-        };
+        var cookieOptions = CreateCookieOptions(expires);
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 
         // Create and persist refresh token for API clients
         string? loginRefresh = null;
         DateTime? loginRefreshExpiry = null;
-        try
-        {
-            loginRefresh = GenerateRefreshToken();
-            loginRefreshExpiry = DateTime.UtcNow.AddDays(30);
-            _refreshRepo?.Create(loginRefresh, u.Id, loginRefreshExpiry.Value);
-            var refreshCookie = new CookieOptions
+            try
             {
-                HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.None,
-                Expires = loginRefreshExpiry,
-                Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
-                Path = "/"
-            };
-            Response.Cookies.Append("MusicAI.Refresh", loginRefresh, refreshCookie);
-        }
+                loginRefresh = GenerateRefreshToken();
+                loginRefreshExpiry = DateTime.UtcNow.AddDays(30);
+                _refreshRepo?.Create(loginRefresh, u.Id, loginRefreshExpiry.Value);
+                var refreshCookie = CreateCookieOptions(loginRefreshExpiry);
+                Response.Cookies.Append("MusicAI.Refresh", loginRefresh, refreshCookie);
+            }
         catch { }
 
         return Ok(new { userId = u.Id, token, role, credits = u.Credits, isSubscribed = u.IsSubscribed, refreshToken = loginRefresh, refreshExpires = loginRefreshExpiry });
@@ -263,15 +228,7 @@ public class OnboardingController : ControllerBase
                 var (newToken, expires) = CreateJwtToken(userId, role, isSubscribed: user.IsSubscribed);
 
                 // Update cookie with new token
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = Request.IsHttps,
-                    SameSite = SameSiteMode.None,
-                    Expires = expires,
-                    Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
-                    Path = "/"
-                };
+                var cookieOptions = CreateCookieOptions(expires);
                 Response.Cookies.Append("MusicAI.Auth", newToken, cookieOptions);
 
                 return Ok(new
@@ -333,15 +290,7 @@ public class OnboardingController : ControllerBase
             var (newToken, expires) = CreateJwtToken(user.Id, "User", isSubscribed: user.IsSubscribed);
 
             // Set cookie for browsers
-            var refreshCookie = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.None,
-                Expires = newExpiry,
-                Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
-                Path = "/"
-            };
+            var refreshCookie = CreateCookieOptions(newExpiry);
             Response.Cookies.Append("MusicAI.Refresh", newRefresh, refreshCookie);
 
             return Ok(new { token = newToken, expires, refreshToken = newRefresh, refreshExpires = newExpiry });
@@ -403,15 +352,7 @@ public class OnboardingController : ControllerBase
         var adminId = "admin";
         var (token, expires) = CreateJwtToken(adminId, "Admin", isSubscribed: true);
 
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.None,
-            Expires = expires,
-            Domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN") ?? ".tingoradio.ai",
-            Path = "/"
-        };
+        var cookieOptions = CreateCookieOptions(expires);
         Response.Cookies.Append("MusicAI.Auth", token, cookieOptions);
 
         return Ok(new { token, role = "Admin" });
@@ -508,6 +449,35 @@ public class OnboardingController : ControllerBase
         var bytes = RandomNumberGenerator.GetBytes(64);
         var s = Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         return s;
+    }
+
+    // Build CookieOptions consistently across endpoints. Do not set a default domain
+    // unless explicitly configured. Respect X-Forwarded-Proto for proxied HTTPS.
+    private CookieOptions CreateCookieOptions(DateTime? expires = null)
+    {
+        var forwardedProto = Request?.Headers["X-Forwarded-Proto"].ToString();
+        var isHttps = (Request?.IsHttps == true) || string.Equals(forwardedProto, "https", StringComparison.OrdinalIgnoreCase);
+
+        var options = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = isHttps,
+            SameSite = SameSiteMode.None,
+            Path = "/",
+        };
+
+        if (expires.HasValue)
+        {
+            options.Expires = new DateTimeOffset(expires.Value);
+        }
+
+        var domain = _configuration["Cookie:Domain"] ?? Environment.GetEnvironmentVariable("COOKIE_DOMAIN");
+        if (!string.IsNullOrWhiteSpace(domain))
+        {
+            options.Domain = domain;
+        }
+
+        return options;
     }
 
     // Since controllers are created per-request, access HttpContext via a static accessor service
