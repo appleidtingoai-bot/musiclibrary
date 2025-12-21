@@ -50,7 +50,15 @@ namespace MusicAI.Orchestrator.Services
                     _logger.LogError(ex, "Payment verification loop error");
                 }
 
-                await Task.Delay(interval, stoppingToken);
+                try
+                {
+                    await Task.Delay(interval, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Graceful shutdown requested - exit loop without throwing
+                    break;
+                }
             }
         }
     }
