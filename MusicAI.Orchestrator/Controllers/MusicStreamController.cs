@@ -67,29 +67,12 @@ namespace MusicAI.Orchestrator.Controllers
                 }
             }
 
-            // Enforce Origin whitelist for HLS requests to prevent direct downloads.
-            // Relaxed: if Origin header is missing (common behind some proxies or for same-origin requests),
-            // accept the request when the Host or X-Forwarded-Host matches an allowed host.
+            // Relax Origin enforcement: only reject when an explicit Origin header is present and disallowed.
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
-            var forwardedHost = Request.Headers.ContainsKey("X-Forwarded-Host") ? Request.Headers["X-Forwarded-Host"].ToString() : string.Empty;
-            var host = Request.Host.Host;
-            var hostToCheck = !string.IsNullOrEmpty(forwardedHost) ? forwardedHost : host;
-
-            if (!string.IsNullOrEmpty(origin))
+            if (!string.IsNullOrEmpty(origin) && !IsOriginAllowed(origin))
             {
-                if (!IsOriginAllowed(origin))
-                {
-                    _logger.LogWarning("Blocked HLS request with disallowed Origin: {Origin}", origin);
-                    return StatusCode(403, new { error = "Origin not allowed" });
-                }
-            }
-            else
-            {
-                if (!IsHostAllowed(hostToCheck))
-                {
-                    _logger.LogWarning("Blocked HLS request without Origin and disallowed Host: {Host}", hostToCheck);
-                    return StatusCode(403, new { error = "Host not allowed" });
-                }
+                _logger.LogWarning("Blocked HLS request with disallowed Origin: {Origin}", origin);
+                return StatusCode(403, new { error = "Origin not allowed" });
             }
 
             // Validate stream token (short-lived) - query param 't'
@@ -143,7 +126,7 @@ namespace MusicAI.Orchestrator.Controllers
                                     {
                                         HttpOnly = false,
                                         Secure = true,
-                                        SameSite = Microsoft.AspNetCore.Http.SameSiteMode.None,
+                                        SameSite = SameSiteMode.None,
                                         Expires = DateTimeOffset.UtcNow.AddMinutes(expiryMinutes),
                                         Path = "/"
                                     };
@@ -266,28 +249,12 @@ namespace MusicAI.Orchestrator.Controllers
                 Request.Headers.ContainsKey("X-Forwarded-Host") ? Request.Headers["X-Forwarded-Host"].ToString() : string.Empty,
                 Request.Headers.ContainsKey("X-Forwarded-Proto") ? Request.Headers["X-Forwarded-Proto"].ToString() : string.Empty);
 
-            // Require an Origin header from allowed origins to reduce direct download abuse.
-            // Relaxed similarly to HLS: allow missing Origin when Host/X-Forwarded-Host matches allowed hosts.
+            // Relax Origin enforcement: only reject when an explicit Origin header is present and disallowed.
             var origin = Request.Headers.ContainsKey("Origin") ? Request.Headers["Origin"].ToString() : string.Empty;
-            var forwardedHost = Request.Headers.ContainsKey("X-Forwarded-Host") ? Request.Headers["X-Forwarded-Host"].ToString() : string.Empty;
-            var host = Request.Host.Host;
-            var hostToCheck = !string.IsNullOrEmpty(forwardedHost) ? forwardedHost : host;
-
-            if (!string.IsNullOrEmpty(origin))
+            if (!string.IsNullOrEmpty(origin) && !IsOriginAllowed(origin))
             {
-                if (!IsOriginAllowed(origin))
-                {
-                    _logger.LogWarning("Blocked stream request with disallowed Origin: {Origin}", origin);
-                    return StatusCode(403, new { error = "Origin not allowed" });
-                }
-            }
-            else
-            {
-                if (!IsHostAllowed(hostToCheck))
-                {
-                    _logger.LogWarning("Blocked stream request without Origin and disallowed Host: {Host}", hostToCheck);
-                    return StatusCode(403, new { error = "Host not allowed" });
-                }
+                _logger.LogWarning("Blocked stream request with disallowed Origin: {Origin}", origin);
+                return StatusCode(403, new { error = "Origin not allowed" });
             }
 
             // Validate stream token (short-lived) - query param 't'
@@ -476,7 +443,7 @@ namespace MusicAI.Orchestrator.Controllers
                 }
 
                 // Fallback defaults
-                var defaults = new[] { "http://localhost:3000", "https://tingoradio.ai", "https://tingoradiomusiclibrary.tingoai.ai" };
+                var defaults = new[] { "http://localhost:3000", "https://tingoradio.ai", "https://www.tingoradio.ai", "https://tingoradiomusiclibrary.tingoradio.ai" };
                 return defaults.Any(d => string.Equals(d, origin, StringComparison.OrdinalIgnoreCase));
             }
             catch
