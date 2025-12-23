@@ -20,14 +20,16 @@ public class OnboardingController : ControllerBase
     private readonly IServiceProvider _sp;
     private readonly UsersRepository _usersRepo;
     private readonly RefreshTokensRepository _refreshRepo;
+    private readonly MusicAI.Orchestrator.Services.IStreamTokenService _streamTokenService;
 
-    public OnboardingController(IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IServiceProvider sp, UsersRepository usersRepo, RefreshTokensRepository refreshRepo)
+    public OnboardingController(IHttpContextAccessor httpContextAccessor, IConfiguration configuration, IServiceProvider sp, UsersRepository usersRepo, RefreshTokensRepository refreshRepo, MusicAI.Orchestrator.Services.IStreamTokenService streamTokenService)
     {
         _httpAccessor = httpContextAccessor;
         _configuration = configuration;
         _sp = sp;
         _usersRepo = usersRepo;
         _refreshRepo = refreshRepo;
+        _streamTokenService = streamTokenService;
         HttpContextAccessorHolder.HttpContextAccessor = httpContextAccessor;
     }
 
@@ -138,7 +140,36 @@ public class OnboardingController : ControllerBase
             }
         catch { }
 
-        return Ok(new { userId = u.Id, token, role, credits = u.Credits, isSubscribed = u.IsSubscribed, refreshToken = loginRefresh, refreshExpires = loginRefreshExpiry });
+        // Issue session stream token for playback (set as HttpOnly cookie so client need not manage it)
+        var (streamToken, streamExpires) = IssueSessionStreamToken();
+        if (!string.IsNullOrEmpty(streamToken))
+        {
+            var streamCookie = CreateCookieOptions(streamExpires);
+            Response.Cookies.Append("MusicAI.Stream", streamToken, streamCookie);
+        }
+
+        return Ok(new { userId = u.Id, token, role, credits = u.Credits, isSubscribed = u.IsSubscribed, refreshToken = loginRefresh, refreshExpires = loginRefreshExpiry, streamExpires });
+    }
+
+    /// <summary>
+    /// Issue a short-lived session stream token at login for client playback. Default TTL is 60 minutes.
+    /// </summary>
+    private (string token, DateTime expires) IssueSessionStreamToken()
+    {
+        var ttlMinutesEnv = _configuration["MUSIC_STREAM_SESSION_TTL_MINUTES"] ?? Environment.GetEnvironmentVariable("MUSIC_STREAM_SESSION_TTL_MINUTES");
+        var ttlMinutes = 60;
+        if (!string.IsNullOrEmpty(ttlMinutesEnv) && int.TryParse(ttlMinutesEnv, out var m)) ttlMinutes = m;
+        var ttl = TimeSpan.FromMinutes(ttlMinutes);
+        var prefix = "music/"; // session tokens allow streaming under this prefix
+        try
+        {
+            var tok = _streamTokenService.GenerateToken(prefix, ttl, false);
+            return (tok, DateTime.UtcNow.Add(ttl));
+        }
+        catch
+        {
+            return (string.Empty, DateTime.UtcNow);
+        }
     }
 
     [Authorize]
@@ -329,6 +360,35 @@ public class OnboardingController : ControllerBase
         var country = req.Country ?? fresh.Country;
         _usersRepo.UpdateCountry(fresh.Id, country);
         return Ok(new { success = true, country });
+    }
+
+    /// <summary>
+    /// Refresh session-scoped stream token. Requires authenticated user (cookie or Authorization header).
+    /// Returns a new short-lived token scoped to the configured prefix.
+    /// </summary>
+    [Authorize]
+    [HttpPost("stream-token/refresh")]
+    public IActionResult RefreshStreamTokenForPlayback()
+    {
+        try
+        {
+            // Ensure user is authenticated
+            var user = GetUserFromToken(out var uid, out var role);
+            if (user == null) return Unauthorized(new { error = "Invalid or missing token" });
+
+            var (token, expires) = IssueSessionStreamToken();
+            if (string.IsNullOrEmpty(token)) return StatusCode(500, new { error = "Failed to generate stream token" });
+
+            // Set as HttpOnly cookie so frontend does not need to receive/manage the token
+            var streamCookie = CreateCookieOptions(expires);
+            Response.Cookies.Append("MusicAI.Stream", token, streamCookie);
+
+            return Ok(new { streamExpires = expires });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "Failed to refresh stream token", detail = ex.Message });
+        }
     }
 
     [HttpGet("detect-ip")]

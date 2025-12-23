@@ -317,7 +317,6 @@ try
     // Bind to deterministic ports for local development (HTTP + HTTPS)
     app.Urls.Clear();
     app.Urls.Add("http://localhost:5000");
-    app.Urls.Add("https://localhost:5001");
     app.Run();
 }
 catch (Exception ex)

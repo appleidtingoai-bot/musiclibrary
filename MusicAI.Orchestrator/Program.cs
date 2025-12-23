@@ -168,7 +168,16 @@ else
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 // Configure CORS: allow production domains and local dev
-var allowedOrigins = new[] { "https://tingoradio.ai", "https://www.tingoradio.ai", "https://tingoradiomusiclibrary.tingoradio.ai", "http://localhost:3000" };
+// Include common local development origins (ports used by frontends and dotnet)
+var allowedOrigins = new[] {
+    "https://tingoradio.ai",
+    "https://www.tingoradio.ai",
+    "https://tingoradiomusiclibrary.tingoradio.ai",
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+ 
+};
 Console.WriteLine($"✓ CORS enabled for origins: {string.Join(", ", allowedOrigins)}");
 
 builder.Services.AddCors(options =>
@@ -922,7 +931,6 @@ app.Use(async (context, next) =>
         "tingoradio.ai",
         "www.tingoradio.ai",
         "tingoradiomusiclibrary.tingoradio.ai",
-        "localhost",
         "localhost:3000",
         // Allow direct IP access on dev machines (useful when curling 127.0.0.1)
         "127.0.0.1",

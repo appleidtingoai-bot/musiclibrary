@@ -5,6 +5,8 @@ using MusicAI.Orchestrator.Services;
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Text;
+using System.Collections.Generic;
 
 namespace MusicAI.Orchestrator.Controllers
 {
@@ -41,6 +43,9 @@ namespace MusicAI.Orchestrator.Controllers
             }
 
             _logger.LogInformation("HLS playlist requested for key: {Key}", key);
+            // Route wildcard keys may be URL-encoded (e.g. music%2Frnb%2F...), decode for validation and S3 access
+            var decodedKey = System.Net.WebUtility.UrlDecode(key ?? string.Empty) ?? string.Empty;
+            _logger.LogDebug("Decoded HLS key: {Decoded}", decodedKey);
 
             // Diagnostic: log relevant headers to help debug Origin/Host when behind a proxy
             _logger.LogInformation("Incoming headers for HLS: Origin={Origin}, Referer={Referer}, Host={Host}, X-Forwarded-Host={XForwardedHost}, X-Forwarded-Proto={XForwardedProto}",
@@ -75,31 +80,50 @@ namespace MusicAI.Orchestrator.Controllers
                 return StatusCode(403, new { error = "Origin not allowed" });
             }
 
-            // Validate stream token (short-lived) - query param 't'
+            // Validate stream token (short-lived) - query param 't'. If missing, allow authenticated users (cookie/JWT).
             var token = Request.Query.ContainsKey("t") ? Request.Query["t"].ToString() : string.Empty;
-            if (string.IsNullOrEmpty(token))
+            var isAuthenticatedUser = HttpContext?.User?.Identity?.IsAuthenticated == true;
+
+            if (string.IsNullOrEmpty(token) && !isAuthenticatedUser)
             {
                 _logger.LogWarning("Blocked HLS request missing token for key: {Key}", key);
                 return StatusCode(403, new { error = "Missing token" });
             }
-            if (!_tokenService.ValidateToken(token, out var tokenS3Key, out var tokenAllowExplicit) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
+
+            string? tokenS3Key = null;
+            bool tokenAllowExplicit = false;
+            if (!string.IsNullOrEmpty(token))
             {
-                _logger.LogWarning("Blocked HLS request with invalid token or key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key);
-                return StatusCode(403, new { error = "Invalid or expired token" });
+                if (!_tokenService.ValidateToken(token, out var _tokenS3, out var _tokenAllow))
+                {
+                    _logger.LogWarning("Blocked HLS request with invalid token. Key:{Key}", key);
+                    return StatusCode(403, new { error = "Invalid or expired token" });
+                }
+                tokenS3Key = _tokenS3;
+                tokenAllowExplicit = _tokenAllow;
+
+                // Allow token to either be an exact key or a prefix (e.g. "music/")
+                var tokenMatches = string.Equals(tokenS3Key, decodedKey, StringComparison.Ordinal) ||
+                                   (tokenS3Key.EndsWith("/") && decodedKey.StartsWith(tokenS3Key, StringComparison.Ordinal));
+                if (!tokenMatches)
+                {
+                    _logger.LogWarning("Blocked HLS request with token/key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key);
+                    return StatusCode(403, new { error = "Invalid or expired token" });
+                }
             }
 
             // If S3 is configured and the key points to an HLS manifest in S3, download the manifest,
             // rewrite any relative segment/variant URIs to presigned S3 URLs, and return the rewritten manifest.
-            if (_s3Service != null && key.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
+            if (_s3Service != null && decodedKey.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
                     // Check object existence
-                    var exists = await _s3Service.ObjectExistsAsync(key);
+                    var exists = await _s3Service.ObjectExistsAsync(decodedKey);
                     if (exists)
                     {
                         var tmpFile = Path.Combine(Path.GetTempPath(), $"hls_manifest_{Guid.NewGuid():N}.m3u8");
-                        var downloaded = await _s3Service.DownloadFileAsync(key, tmpFile);
+                        var downloaded = await _s3Service.DownloadFileAsync(decodedKey, tmpFile);
                         if (!downloaded || !System.IO.File.Exists(tmpFile))
                         {
                             _logger.LogError("Failed to download manifest {Key} from S3", key);
@@ -142,7 +166,7 @@ namespace MusicAI.Orchestrator.Controllers
                         }
 
                         // Directory prefix for segments/variants
-                        var dir = key.Contains('/') ? key.Substring(0, key.LastIndexOf('/')) : string.Empty;
+                        var dir = decodedKey.Contains('/') ? decodedKey.Substring(0, decodedKey.LastIndexOf('/')) : string.Empty;
 
                         for (int i = 0; i < lines.Count; i++)
                         {
@@ -156,7 +180,7 @@ namespace MusicAI.Orchestrator.Controllers
                             }
 
                             // Build S3 key for the referenced resource
-                            var referencedKey = string.IsNullOrEmpty(dir) ? line : $"{dir}/{line}";
+                                var referencedKey = string.IsNullOrEmpty(dir) ? line : $"{dir}/{line}";
 
                             try
                             {
@@ -208,7 +232,7 @@ namespace MusicAI.Orchestrator.Controllers
             }
 
             // Fallback: generate a simple HLS manifest that proxies the stream endpoint
-            var baseUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{Uri.EscapeDataString(key)}";
+            var baseUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{Uri.EscapeDataString(decodedKey)}";
 
             var m3u8Content = $@"#EXTM3U
 #EXT-X-VERSION:3
@@ -240,6 +264,8 @@ namespace MusicAI.Orchestrator.Controllers
             }
 
             _logger.LogInformation("Stream requested for key: {Key}", key);
+            var decodedKey = System.Net.WebUtility.UrlDecode(key ?? string.Empty) ?? string.Empty;
+            _logger.LogDebug("Decoded stream key: {Decoded}", decodedKey);
 
             // Diagnostic: log relevant headers to help debug Origin/Host when behind a proxy
             _logger.LogInformation("Incoming headers for stream: Origin={Origin}, Referer={Referer}, Host={Host}, X-Forwarded-Host={XForwardedHost}, X-Forwarded-Proto={XForwardedProto}",
@@ -257,17 +283,35 @@ namespace MusicAI.Orchestrator.Controllers
                 return StatusCode(403, new { error = "Origin not allowed" });
             }
 
-            // Validate stream token (short-lived) - query param 't'
-            var token = Request.Query.ContainsKey("t") ? Request.Query["t"].ToString() : string.Empty;
-            if (string.IsNullOrEmpty(token))
+            // Validate stream token (short-lived) - query param 't'. If missing, allow authenticated users (cookie/JWT).
+            var tokenStream = Request.Query.ContainsKey("t") ? Request.Query["t"].ToString() : string.Empty;
+            var isAuthUserStream = HttpContext?.User?.Identity?.IsAuthenticated == true;
+
+            if (string.IsNullOrEmpty(tokenStream) && !isAuthUserStream)
             {
                 _logger.LogWarning("Blocked stream request missing token for key: {Key}", key);
                 return StatusCode(403, new { error = "Missing token" });
             }
-            if (!_tokenService.ValidateToken(token, out var tokenS3Key, out var tokenAllowExplicit) || string.IsNullOrEmpty(tokenS3Key) || tokenS3Key != key)
+
+            string? tokenS3Key2 = null;
+            bool tokenAllowExplicit2 = false;
+            if (!string.IsNullOrEmpty(tokenStream))
             {
-                _logger.LogWarning("Blocked stream request with invalid token or key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key);
-                return StatusCode(403, new { error = "Invalid or expired token" });
+                if (!_tokenService.ValidateToken(tokenStream, out var _tokenS3_2, out var _tokenAllow2))
+                {
+                    _logger.LogWarning("Blocked stream request with invalid token. Key:{Key}", key);
+                    return StatusCode(403, new { error = "Invalid or expired token" });
+                }
+                tokenS3Key2 = _tokenS3_2;
+                tokenAllowExplicit2 = _tokenAllow2;
+
+                var tokenMatchesStream = string.Equals(tokenS3Key2, decodedKey, StringComparison.Ordinal) ||
+                                         (tokenS3Key2.EndsWith("/") && decodedKey.StartsWith(tokenS3Key2, StringComparison.Ordinal));
+                if (!tokenMatchesStream)
+                {
+                    _logger.LogWarning("Blocked stream request with token/key mismatch. Key:{Key} TokenKey:{TokenKey}", key, tokenS3Key2);
+                    return StatusCode(403, new { error = "Invalid or expired token" });
+                }
             }
 
             if (_s3Service == null)
@@ -314,7 +358,7 @@ namespace MusicAI.Orchestrator.Controllers
 
                 // Fallback to proxying via S3 presigned URL
                 // Get presigned URL from S3 (short-lived, 5 minutes)
-                var presignedUrl = await _s3Service.GetPresignedUrlAsync(key, TimeSpan.FromMinutes(5));
+                    var presignedUrl = await _s3Service.GetPresignedUrlAsync(decodedKey, TimeSpan.FromMinutes(5));
 
                 if (string.IsNullOrEmpty(presignedUrl))
                 {
@@ -429,6 +473,88 @@ namespace MusicAI.Orchestrator.Controllers
                 Response.Headers["Access-Control-Allow-Headers"] = "Range, Content-Type";
             }
             return Ok();
+        }
+
+        /// <summary>
+        /// Continuous VOD HLS playlist for all music in S3 'music/' prefix.
+        /// Returns a single .m3u8 that lists every MP3 object as a media URI.
+        /// The media URIs prefer CDN_DOMAIN/media/<key> when configured.
+        /// </summary>
+        [HttpGet("continuous/{userId}")]
+        public async Task<IActionResult> GetContinuousPlaylist([FromRoute] string userId)
+        {
+            // userId currently unused but kept as input per API contract
+            try
+            {
+                if (_s3Service == null)
+                {
+                    _logger.LogError("S3 service not configured for continuous playlist");
+                    return StatusCode(500, new { error = "Streaming service not configured" });
+                }
+
+                // list objects under music/ prefix
+                var objs = (await _s3Service.ListObjectsAsync("music/"))?.ToList() ?? new List<string>();
+                // filter mp3 files
+                var tracks = objs.Where(k => !string.IsNullOrEmpty(k) && (k.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) || k.EndsWith(".m4a", StringComparison.OrdinalIgnoreCase) || k.EndsWith(".aac", StringComparison.OrdinalIgnoreCase))).ToList();
+
+                if (tracks.Count == 0)
+                {
+                    return Ok(new { oap = "None", tracks = new List<object>() });
+                }
+
+                // duration (generic) in seconds
+                var durationSeconds = 10.0;
+                var durEnv = Environment.GetEnvironmentVariable("MUSIC_GENERIC_DURATION_SECONDS");
+                if (!string.IsNullOrEmpty(durEnv) && double.TryParse(durEnv, out var d)) durationSeconds = d;
+
+                var cdn = Environment.GetEnvironmentVariable("CDN_DOMAIN")?.TrimEnd('/');
+
+                var sb = new StringBuilder();
+                sb.AppendLine("#EXTM3U");
+                sb.AppendLine("#EXT-X-VERSION:3");
+                sb.AppendLine($"#EXT-X-TARGETDURATION:{Math.Max(1, (int)Math.Ceiling(durationSeconds))}");
+                sb.AppendLine("#EXT-X-MEDIA-SEQUENCE:0");
+                sb.AppendLine("#EXT-X-PLAYLIST-TYPE:VOD");
+                sb.AppendLine();
+
+                foreach (var key in tracks)
+                {
+                    var title = System.IO.Path.GetFileNameWithoutExtension(key) ?? "track";
+                    sb.AppendLine($"#EXTINF:{durationSeconds},{title}");
+                    string mediaUrl;
+                    // Generate a short-lived stream token per track so clients can fetch the stream endpoint
+                    string token = string.Empty;
+                    try
+                    {
+                        token = _tokenService.GenerateToken(key ?? string.Empty, TimeSpan.FromHours(1), false) ?? string.Empty;
+                    }
+                    catch { token = string.Empty; }
+
+                    var tokenQuery = string.IsNullOrEmpty(token) ? string.Empty : $"?t={Uri.EscapeDataString(token)}";
+
+                    if (!string.IsNullOrEmpty(cdn))
+                    {
+                        // CDN worker expects /media/<key>. Append token as querystring so worker or origin can validate if needed.
+                        mediaUrl = $"https://{cdn}/media/{Uri.EscapeDataString(key)}{tokenQuery}";
+                    }
+                    else
+                    {
+                        mediaUrl = $"{Request.Scheme}://{Request.Host}/api/music/stream/{Uri.EscapeDataString(key)}{tokenQuery}";
+                    }
+                    sb.AppendLine(mediaUrl);
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine("#EXT-X-ENDLIST");
+
+                Response.Headers["Content-Disposition"] = "inline";
+                return Content(sb.ToString(), "application/vnd.apple.mpegurl");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to build continuous playlist for user {UserId}", userId);
+                return StatusCode(500, new { error = "Failed to build playlist" });
+            }
         }
 
         private static bool IsOriginAllowed(string origin)
